@@ -57,7 +57,7 @@ public class XPChart implements LayoutableRenderableEntity
 
 	// configs
 
-	@Setter private int span = secondsToTicks(180);
+	@Setter @Getter private int span = secondsToTicks(180);
 	@Setter private int chartHeight = 60;
 	@Setter private boolean showTimeLabels = true;
 	@Setter private boolean showTimeMarkers = true;

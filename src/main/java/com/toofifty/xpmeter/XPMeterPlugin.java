@@ -6,7 +6,9 @@ import static com.toofifty.xpmeter.Util.secondsToTicks;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.KeyCode;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -27,6 +29,9 @@ public class XPMeterPlugin extends Plugin
 
 	@Inject
 	private OverlayManager overlayManager;
+
+	@Inject
+	private ConfigManager configManager;
 
 	@Inject
 	private XPMeterConfig config;
@@ -88,12 +93,36 @@ public class XPMeterPlugin extends Plugin
 		}
 	}
 
+	@Subscribe
+	public void onScriptCallbackEvent(ScriptCallbackEvent event)
+	{
+		if (!config.scrollZoom())
+		{
+			return;
+		}
+
+		var intStack = client.getIntStack();
+		var intStackSize = client.getIntStackSize();
+
+		if ("scrollWheelZoomIncrement".equals(event.getEventName())
+			&& overlay.isMouseOver()
+			&& client.isKeyPressed(KeyCode.KC_SHIFT))
+		{
+			updateScroll(intStack[intStackSize - 2]);
+
+			// this stops the client scroll - don't ask how
+			intStack[2] = -intStack[1];
+		}
+	}
+
 	/**
 	 * Push config values into overlay, so they aren't
 	 * read every frame
 	 */
 	private void updateConfig()
 	{
+		var shouldRecalculate = overlay.getChart().getSpan() != config.span();
+
 		overlay.setUpdateInterval(secondsToTicks(config.updateInterval()));
 		overlay.getChart().setSpan(secondsToTicks(config.span()));
 		overlay.getChart().setChartHeight(config.chartHeight());
@@ -103,6 +132,34 @@ public class XPMeterPlugin extends Plugin
 		overlay.getChart().setShowXpMarkers(config.showXpMarkers());
 		overlay.getChart().setShowCurrentRates(config.showCurrentRates());
 		overlay.getChart().setShowSkillIcons(config.showSkillIcons());
+
+		if (shouldRecalculate)
+		{
+			// re-calculate to update span
+			overlay.update();
+		}
+	}
+
+	private void updateScroll(int dir)
+	{
+		// min 5 so 1.2 can actually apply
+		var span = config.span();
+		if (dir == -1) // in
+		{
+			span /= 1.2;
+		}
+		else if (dir == 1) // out
+		{
+			span *= 1.2;
+		}
+
+		span = Math.max(span, 10);
+
+		configManager.setConfiguration(
+			XPMeterConfig.GROUP_NAME,
+			"span",
+			span
+		);
 	}
 
 	private void addOverlay()

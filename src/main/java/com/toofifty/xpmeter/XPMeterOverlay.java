@@ -33,6 +33,9 @@ public class XPMeterOverlay extends OverlayPanel
 	@Getter
 	private final XPChart chart = new XPChart();
 
+	@Getter
+	private boolean isMouseOver = false;
+
 	@Inject
 	private XPMeterOverlay()
 	{
@@ -91,16 +94,19 @@ public class XPMeterOverlay extends OverlayPanel
 		{
 			panelComponent.getChildren().add(
 				LineComponent.builder()
-					.left("XP Meter - not enough data")
+					.left("XP Meter inactive")
 					.build()
 			);
 		}
+
+		isMouseOver = false;
+
 		return super.render(graphics);
 	}
 
 	@Override
 	public void onMouseOver()
 	{
-		super.onMouseOver();
+		isMouseOver = true;
 	}
 }

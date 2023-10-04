@@ -4,11 +4,14 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 import net.runelite.client.config.Units;
 
-@ConfigGroup("xp-meter")
+@ConfigGroup(XPMeterConfig.GROUP_NAME)
 public interface XPMeterConfig extends Config
 {
+	String GROUP_NAME = "xp-meter";
+
 	@ConfigSection(
 		name = "Tracking",
 		description = "XP tracking settings",
@@ -36,9 +39,10 @@ public interface XPMeterConfig extends Config
 		section = tracking
 	)
 	@Units(Units.SECONDS)
+	@Range(min = 1)
 	default int windowInterval()
 	{
-		return 300;
+		return 60;
 	}
 
 	@ConfigItem(
@@ -49,9 +53,10 @@ public interface XPMeterConfig extends Config
 		section = tracking
 	)
 	@Units(Units.SECONDS)
+	@Range(min = 1)
 	default int updateInterval()
 	{
-		return 30;
+		return 1;
 	}
 
 	@ConfigSection(
@@ -69,6 +74,7 @@ public interface XPMeterConfig extends Config
 		section = display
 	)
 	@Units(Units.SECONDS)
+	@Range(min = 10)
 	default int span()
 	{
 		return 180;
@@ -81,6 +87,8 @@ public interface XPMeterConfig extends Config
 		position = 2,
 		section = display
 	)
+	@Range(min = 10,
+		   max = 200)
 	default int chartHeight()
 	{
 		return 60;
@@ -151,7 +159,9 @@ public interface XPMeterConfig extends Config
 		keyName = "showSkillIcons",
 		description = "Show mini skill icons at the end of each line",
 		section = display,
-		position = 8
+		position = 8,
+		// TODO
+		hidden = true
 	)
 	default boolean showSkillIcons()
 	{
@@ -170,7 +180,9 @@ public interface XPMeterConfig extends Config
 		keyName = "enableHover",
 		description = "Show momentary XP rates when hovering over the overlay",
 		section = interactivity,
-		position = 1
+		position = 1,
+		// TODO
+		hidden = true
 	)
 	default boolean enableHover()
 	{
