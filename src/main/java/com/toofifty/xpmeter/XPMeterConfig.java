@@ -159,9 +159,7 @@ public interface XPMeterConfig extends Config
 		keyName = "showSkillIcons",
 		description = "Show mini skill icons at the end of each line",
 		section = display,
-		position = 8,
-		// TODO
-		hidden = true
+		position = 8
 	)
 	default boolean showSkillIcons()
 	{

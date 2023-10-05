@@ -16,6 +16,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Skill;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
 
 public class XPChart extends XPChartBase implements LayoutableRenderableEntity
@@ -39,6 +40,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final Color RATE_BACKGROUND_COLOR = new Color(0, 0, 0, 64);
 
 	@Setter private Map<Skill, List<Point>> skillXpHistories = null;
+	@Setter private SkillIconManager skillIconManager;
 
 	/**
 	 * Skill keys, sorted from the lowest current rate to highest
@@ -196,7 +198,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			return;
 		}
 
-		final var x = size.width + CURR_RATE_LPAD;
+		final var baseX = size.width + CURR_RATE_LPAD;
 
 		for (var skill : sortedSkills)
 		{
@@ -211,8 +213,14 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 					: format(last.y);
 
 				final var y = mapY(last.y, true);
+				var x = baseX;
 
-				// TODO: skill icons
+				if (showSkillIcons)
+				{
+					final var icon = skillIconManager.getSkillImage(skill, true);
+					x += icon.getWidth() + CURR_RATE_LPAD;
+					drawImage(icon, baseX, y - icon.getHeight() / 2);
+				}
 
 				if (showCurrentRates)
 				{
@@ -327,7 +335,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				final var text = showSkillIcons ? shortFormat(last.y) : format(last.y);
 				final var width = (showCurrentRates ? width(text) + CURR_RATE_LPAD : 0)
-					+ (showSkillIcons ? SKILL_ICON_WIDTH : 0);
+					+ (showSkillIcons ? SKILL_ICON_WIDTH + CURR_RATE_LPAD : 0);
 
 				if (width > currentRateWidth)
 				{

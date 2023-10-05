@@ -6,6 +6,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
@@ -118,6 +119,11 @@ public abstract class XPChartBase implements LayoutableRenderableEntity
 	protected void drawHMarker(int y)
 	{
 		drawLine(0, y, size.width, y);
+	}
+
+	protected void drawImage(BufferedImage image, int x, int y)
+	{
+		graphics.drawImage(image, offset.x + x, offset.y + y, null);
 	}
 
 	/**

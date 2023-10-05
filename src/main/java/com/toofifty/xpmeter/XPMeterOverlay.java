@@ -14,6 +14,7 @@ import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.Skill;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -34,7 +35,7 @@ public class XPMeterOverlay extends OverlayPanel
 	@Getter private boolean isMouseOver = false;
 
 	@Inject
-	private XPMeterOverlay()
+	private XPMeterOverlay(SkillIconManager skillIconManager)
 	{
 		if (getPreferredSize() == null)
 		{
@@ -45,6 +46,8 @@ public class XPMeterOverlay extends OverlayPanel
 		setMinimumSize(XPChart.MIN_WIDTH);
 		setResizable(true);
 		setResettable(true);
+
+		chart.setSkillIconManager(skillIconManager);
 	}
 
 	/**
