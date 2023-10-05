@@ -13,6 +13,7 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Skill;
@@ -36,6 +37,9 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final Color TIME_LABEL_COLOR = new Color(255, 255, 255, 128);
 	private static final Color TIME_MARKER_COLOR = new Color(255, 255, 255, 32);
 
+	private static final Color PAUSE_MARKER_COLOR = new Color(0, 166, 255, 128);
+	private static final Color LOGOUT_MARKER_COLOR = new Color(255, 68, 0, 128);
+
 	private static final Color BACKGROUND_COLOR = new Color(0, 0, 0, 32);
 	private static final Color RATE_BACKGROUND_COLOR = new Color(0, 0, 0, 64);
 
@@ -48,6 +52,8 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	@Setter private List<Skill> sortedSkills = null;
 	@Setter private int maxXPPerHour = 0;
 	@Setter private int currentTick = 0;
+	@Setter private Set<Integer> pauses = null;
+	@Setter private Set<Integer> logouts = null;
 
 	// configs
 
@@ -94,6 +100,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		drawTimeLabels();
 		drawHistoryPlot();
 		drawCurrentRates();
+		drawPauses();
 
 		return dimension;
 	}
@@ -262,6 +269,21 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			{
 				drawLine(prev.x, prev.y, size.width, prev.y, true);
 			}
+		}
+	}
+
+	public void drawPauses()
+	{
+		setColor(PAUSE_MARKER_COLOR);
+		for (var tick : pauses)
+		{
+			drawVMarker(mapX(tick));
+		}
+
+		setColor(LOGOUT_MARKER_COLOR);
+		for (var tick : logouts)
+		{
+			drawVMarker(mapX(tick));
 		}
 	}
 

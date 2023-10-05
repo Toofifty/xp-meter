@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Client;
+import net.runelite.api.MenuAction;
 import net.runelite.api.Skill;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
@@ -48,6 +49,40 @@ public class XPMeterOverlay extends OverlayPanel
 		setResettable(true);
 
 		chart.setSkillIconManager(skillIconManager);
+
+		addMenuEntry(
+			MenuAction.RUNELITE_OVERLAY,
+			"Reset",
+			"XP Meter",
+			e -> tracker.reset()
+		);
+
+		updateMenuEntries();
+	}
+
+	public void updateMenuEntries()
+	{
+		removeMenuEntry(MenuAction.RUNELITE_OVERLAY, "Pause", "XP Meter");
+		removeMenuEntry(MenuAction.RUNELITE_OVERLAY, "Unpause", "XP Meter");
+
+		addMenuEntry(
+			MenuAction.RUNELITE_OVERLAY,
+			// tracker will be null on first call
+			tracker != null && tracker.isPaused() ? "Unpause" : "Pause",
+			"XP Meter",
+			e -> {
+				if (tracker.isPaused())
+				{
+					tracker.unpause();
+				}
+				else
+				{
+					tracker.pause();
+				}
+
+				updateMenuEntries();
+			}
+		);
 	}
 
 	/**
@@ -86,7 +121,9 @@ public class XPMeterOverlay extends OverlayPanel
 		chart.setSkillXpHistories(skillHistories);
 		chart.setSortedSkills(sortedSkills);
 		chart.setMaxXPPerHour(maxXPPerHour);
-		chart.setCurrentTick(client.getTickCount());
+		chart.setCurrentTick(tracker.getCurrentTick());
+		chart.setPauses(tracker.getPauses());
+		chart.setLogouts(tracker.getLogouts());
 	}
 
 	@Override

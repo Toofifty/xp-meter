@@ -6,12 +6,12 @@ import static com.toofifty.xpmeter.Util.secondsToTicks;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import net.runelite.api.Client;
 import net.runelite.api.Skill;
 
 @Singleton
@@ -20,17 +20,23 @@ public class XPTracker
 	private static final int ONE_MINUTE = 100;
 	private static final int ONE_HOUR = 60 * ONE_MINUTE;
 
-	@Inject private Client client;
 	@Inject private XPMeterConfig config;
 
 	private final Map<Skill, List<XPGain>> xpGained = new HashMap<>();
 	private final Map<Skill, Integer> lastXp = new HashMap<>();
 
-	@Getter
-	private int currentTick;
+	@Getter private int currentTick;
+	@Getter private boolean paused;
+	@Getter private final Set<Integer> pauses = new HashSet<>();
+	@Getter private final Set<Integer> logouts = new HashSet<>();
 
 	public void track(Skill skill, int xp)
 	{
+		if (paused)
+		{
+			return;
+		}
+
 		if (lastXp.containsKey(skill))
 		{
 			if (!xpGained.containsKey(skill))
@@ -43,6 +49,11 @@ public class XPTracker
 		}
 
 		lastXp.put(skill, xp);
+	}
+
+	public boolean isTracking()
+	{
+		return !lastXp.isEmpty();
 	}
 
 	public Set<Skill> getTrackedSkills()
@@ -90,6 +101,23 @@ public class XPTracker
 	public void reset()
 	{
 		xpGained.clear();
+		currentTick = 0;
+	}
+
+	public void pause()
+	{
+		paused = true;
+		pauses.add(currentTick);
+	}
+
+	public void unpause()
+	{
+		paused = false;
+	}
+
+	public void trackLogout()
+	{
+		logouts.add(currentTick);
 	}
 
 	@AllArgsConstructor

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.KeyCode;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.StatChanged;
@@ -56,7 +57,11 @@ public class XPMeterPlugin extends Plugin
 	{
 		if (client.getGameState() != GameState.LOGGED_IN)
 		{
-			// TODO: track logout
+			return;
+		}
+
+		if (tracker.isPaused())
+		{
 			return;
 		}
 
@@ -67,6 +72,17 @@ public class XPMeterPlugin extends Plugin
 		if (tracker.getCurrentTick() % secondsToTicks(config.updateInterval()) == 0)
 		{
 			overlay.update();
+		}
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() != GameState.LOGGED_IN
+			&& event.getGameState() != GameState.LOADING
+			&& tracker.isTracking())
+		{
+			tracker.trackLogout();
 		}
 	}
 
