@@ -175,16 +175,14 @@ public interface XPMeterConfig extends Config
 
 	@ConfigItem(
 		name = "Hover effects",
-		keyName = "enableHover",
+		keyName = "mouseHover",
 		description = "Show momentary XP rates when hovering over the overlay",
 		section = interactivity,
-		position = 1,
-		// TODO
-		hidden = true
+		position = 1
 	)
-	default boolean enableHover()
+	default boolean mouseHover()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(

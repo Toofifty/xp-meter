@@ -19,6 +19,7 @@ import lombok.Setter;
 import net.runelite.api.Skill;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 
 public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 {
@@ -40,11 +41,13 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final Color PAUSE_MARKER_COLOR = new Color(0, 166, 255, 128);
 	private static final Color LOGOUT_MARKER_COLOR = new Color(255, 68, 0, 128);
 
+	private static final Color CURSOR_MARKER_COLOR = new Color(255, 255, 255, 128);
+
 	private static final Color BACKGROUND_COLOR = new Color(0, 0, 0, 32);
 	private static final Color RATE_BACKGROUND_COLOR = new Color(0, 0, 0, 64);
+	private static final Color TOOLTIP_BACKGROUND_COLOR = new Color(0, 0, 0, 128);
 
 	@Setter private Map<Skill, List<Point>> skillXpHistories = null;
-	@Setter private SkillIconManager skillIconManager;
 
 	/**
 	 * Skill keys, sorted from the lowest current rate to highest
@@ -55,9 +58,14 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	@Setter private Set<Integer> pauses = null;
 	@Setter private Set<Integer> logouts = null;
 
+	@Setter private Point mouse = null;
+	@Setter private SkillIconManager skillIconManager;
+	@Setter private TooltipManager tooltipManager;
+
 	// configs
 
 	@Setter @Getter private int span = secondsToTicks(180);
+	@Setter private int updateInterval = 1;
 	@Setter private int chartHeight = 60;
 	@Setter private boolean showTimeLabels = true;
 	@Setter private boolean showTimeMarkers = true;
@@ -65,6 +73,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	@Setter private boolean showXpMarkers = true;
 	@Setter private boolean showCurrentRates = true;
 	@Setter private boolean showSkillIcons = true;
+	@Setter private boolean showMouseHover = true;
 
 	public boolean hasData()
 	{
@@ -101,6 +110,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		drawHistoryPlot();
 		drawCurrentRates();
 		drawPauses();
+		drawMouseOver();
 
 		return dimension;
 	}
@@ -284,6 +294,56 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		for (var tick : logouts)
 		{
 			drawVMarker(mapX(tick));
+		}
+	}
+
+	public void drawMouseOver()
+	{
+		if (mouse == null)
+		{
+			return;
+		}
+
+		final var mx = mouse.x - offset.x;
+		final var my = mouse.y - offset.y;
+
+		if (mx < 0 || my < 0 || mx > size.width || my > size.height)
+		{
+			return;
+		}
+
+		// offset by half updateInterval to pseudo "round up"
+		final var hoveredTick = unmapX(mx) + updateInterval / 2;
+		// the span start can be off-phase from the updateInterval,
+		// so the correction is added so hoveredInterval always lands
+		// on a number divisible by updateInterval
+		final var spanStartCorrection = Math.max(currentTick - span, 0) % updateInterval;
+		final var hoveredInterval = hoveredTick - hoveredTick % updateInterval
+			+ spanStartCorrection;
+
+		// map back to x for visual clarity
+		final var x = mapX(hoveredInterval) + CURR_RATE_LPAD;
+
+		setColor(CURSOR_MARKER_COLOR);
+		drawVMarker(x - CURR_RATE_LPAD);
+
+		for (var skill : skillXpHistories.keySet())
+		{
+			final var history = skillXpHistories.get(skill);
+			final var dataPoint = history.stream()
+				.filter(point -> point.x == hoveredInterval)
+				.findFirst().orElse(null);
+
+			if (dataPoint != null && dataPoint.y != 0)
+			{
+				final var y = mapY(dataPoint.y, true);
+				final var label = skill.getName() + ": " + format(dataPoint.y) + "/hr";
+
+				setColor(TOOLTIP_BACKGROUND_COLOR);
+				fillRoundRect(x - 1, y - fontHeight / 2 - 1, width(label) + 2, fontHeight + 2, 2);
+				setColor(SkillColor.get(skill));
+				drawText(label, x, y + fontHeight / 2, true);
+			}
 		}
 	}
 

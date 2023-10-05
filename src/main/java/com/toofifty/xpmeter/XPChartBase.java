@@ -135,6 +135,11 @@ public abstract class XPChartBase implements LayoutableRenderableEntity
 		return (x - widthMin) * size.width / (widthMax - widthMin);
 	}
 
+	protected int unmapX(int x)
+	{
+		return x * (widthMax - widthMin) / size.width + widthMin;
+	}
+
 	/**
 	 * Map a Y coordinate (i.e. xp rate) to a Y
 	 * coordinate in the chart.

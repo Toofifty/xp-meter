@@ -125,6 +125,7 @@ public class XPMeterPlugin extends Plugin
 		final var shouldRecalculate = overlay.getChart().getSpan() != config.span();
 
 		overlay.setUpdateInterval(secondsToTicks(config.updateInterval()));
+		overlay.getChart().setUpdateInterval(secondsToTicks(config.updateInterval()));
 		overlay.getChart().setSpan(secondsToTicks(config.span()));
 		overlay.getChart().setChartHeight(config.chartHeight());
 		overlay.getChart().setShowTimeLabels(config.showTimeLabels());
@@ -133,6 +134,7 @@ public class XPMeterPlugin extends Plugin
 		overlay.getChart().setShowXpMarkers(config.showXpMarkers());
 		overlay.getChart().setShowCurrentRates(config.showCurrentRates());
 		overlay.getChart().setShowSkillIcons(config.showSkillIcons());
+		overlay.getChart().setShowMouseHover(config.mouseHover());
 
 		if (shouldRecalculate)
 		{

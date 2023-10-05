@@ -19,6 +19,7 @@ import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
+import net.runelite.client.ui.overlay.tooltip.TooltipManager;
 
 @Singleton
 public class XPMeterOverlay extends OverlayPanel
@@ -36,7 +37,7 @@ public class XPMeterOverlay extends OverlayPanel
 	@Getter private boolean isMouseOver = false;
 
 	@Inject
-	private XPMeterOverlay(SkillIconManager skillIconManager)
+	private XPMeterOverlay(SkillIconManager skillIconManager, TooltipManager tooltipManager)
 	{
 		if (getPreferredSize() == null)
 		{
@@ -49,6 +50,7 @@ public class XPMeterOverlay extends OverlayPanel
 		setResettable(true);
 
 		chart.setSkillIconManager(skillIconManager);
+		chart.setTooltipManager(tooltipManager);
 
 		addMenuEntry(
 			MenuAction.RUNELITE_OVERLAY,
@@ -154,5 +156,17 @@ public class XPMeterOverlay extends OverlayPanel
 	public void onMouseOver()
 	{
 		isMouseOver = true;
+
+		final var bounds = getBounds();
+		final var canvas = client.getMouseCanvasPosition();
+		final var mouse = new Point(
+			canvas.getX() - bounds.x,
+			canvas.getY() - bounds.y
+		);
+
+		if (mouse.x >= 0 && mouse.y >= 0)
+		{
+			chart.setMouse(mouse);
+		}
 	}
 }
