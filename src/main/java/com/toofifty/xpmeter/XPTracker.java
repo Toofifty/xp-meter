@@ -24,6 +24,7 @@ public class XPTracker
 
 	private final Map<Skill, List<XPGain>> xpGained = new HashMap<>();
 	private final Map<Skill, Integer> lastXp = new HashMap<>();
+	private final Map<Skill, Integer> startTicks = new HashMap<>();
 
 	@Getter private int currentTick;
 	@Getter private boolean paused;
@@ -42,6 +43,7 @@ public class XPTracker
 			if (!xpGained.containsKey(skill))
 			{
 				xpGained.put(skill, new ArrayList<>());
+				startTicks.put(skill, currentTick);
 			}
 
 			final var diff = xp - lastXp.get(skill);
@@ -65,6 +67,7 @@ public class XPTracker
 	{
 		final var xpGains = xpGained.getOrDefault(skill, List.of());
 		final var interval = secondsToTicks(config.windowInterval());
+		final var elapsed = tick - startTicks.getOrDefault(skill, 0);
 
 		final var xpGained = xpGains.stream()
 			.filter((XPGain xpGain) -> xpGain.tick <= tick && (
@@ -75,7 +78,7 @@ public class XPTracker
 
 		if (config.trackingMode() == TrackingMode.CUMULATIVE)
 		{
-			return xpGained * ONE_HOUR / Math.max(ONE_MINUTE, tick);
+			return xpGained * ONE_HOUR / Math.max(ONE_MINUTE, elapsed);
 		}
 
 		return xpGained * ONE_HOUR / interval;
@@ -101,6 +104,7 @@ public class XPTracker
 	public void reset()
 	{
 		xpGained.clear();
+		startTicks.clear();
 		currentTick = 0;
 	}
 
