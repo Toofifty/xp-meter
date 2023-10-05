@@ -3,38 +3,31 @@ package com.toofifty.xpmeter;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import static com.toofifty.xpmeter.Util.secondsToTicks;
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Predicate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 import net.runelite.api.Client;
-import net.runelite.api.Point;
 import net.runelite.api.Skill;
 
 @Singleton
 public class XPTracker
 {
-	private static final int MIN_TICKS = 100;
+	private static final int ONE_MINUTE = 100;
+	private static final int ONE_HOUR = 60 * ONE_MINUTE;
 
-	@Inject
-	private Client client;
-
-	@Inject
-	private XPMeterConfig config;
+	@Inject private Client client;
+	@Inject private XPMeterConfig config;
 
 	private final Map<Skill, List<XPGain>> xpGained = new HashMap<>();
 	private final Map<Skill, Integer> lastXp = new HashMap<>();
 
 	@Getter
-	private int ticks;
-
-	@Setter
-	private int windowTickInterval = 300;
+	private int currentTick;
 
 	public void track(Skill skill, int xp)
 	{
@@ -46,8 +39,7 @@ public class XPTracker
 			}
 
 			final var diff = xp - lastXp.get(skill);
-			final var xpGains = xpGained.get(skill);
-			xpGains.add(new XPGain(skill, diff, client.getTickCount()));
+			xpGained.get(skill).add(new XPGain(currentTick, diff));
 		}
 
 		lastXp.put(skill, xp);
@@ -63,28 +55,26 @@ public class XPTracker
 		final var xpGains = xpGained.getOrDefault(skill, List.of());
 		final var interval = secondsToTicks(config.windowInterval());
 
-		final Predicate<XPGain> predicate = (XPGain xpGain) ->
-			xpGain.tick <= tick && (config.trackingMode() == TrackingMode.CUMULATIVE || xpGain.tick > (tick - interval));
-
 		final var xpGained = xpGains.stream()
-			.filter(predicate)
+			.filter((XPGain xpGain) -> xpGain.tick <= tick && (
+				config.trackingMode() == TrackingMode.CUMULATIVE || xpGain.tick > (tick - interval)
+			))
 			.mapToInt(xpGain -> xpGain.xp)
 			.sum();
 
 		if (config.trackingMode() == TrackingMode.CUMULATIVE)
 		{
-			return xpGained * 6000 / Math.max(MIN_TICKS, tick);
+			return xpGained * ONE_HOUR / Math.max(ONE_MINUTE, tick);
 		}
 
-		// 6000 = 1 hour in ticks
-		return xpGained * 6000 / interval;
+		return xpGained * ONE_HOUR / interval;
 	}
 
-	public List<Point> getXPPerHourHistory(Skill skill, int updateInterval)
+	public List<Point> getHistory(Skill skill, int updateInterval)
 	{
 		final var history = new ArrayList<Point>();
-		final var startTick = Math.max(ticks - secondsToTicks(config.span()), 0);
-		for (int t = startTick; t < ticks; t += updateInterval)
+		final var startTick = Math.max(currentTick - secondsToTicks(config.span()), 0);
+		for (int t = startTick; t < currentTick; t += updateInterval)
 		{
 			history.add(new Point(t, getXPPerHourAt(skill, t)));
 		}
@@ -94,12 +84,7 @@ public class XPTracker
 
 	public void tick()
 	{
-		ticks++;
-	}
-
-	public void reset(Skill skill)
-	{
-		xpGained.put(skill, new ArrayList<>());
+		currentTick++;
 	}
 
 	public void reset()
@@ -110,8 +95,7 @@ public class XPTracker
 	@AllArgsConstructor
 	static class XPGain
 	{
-		private Skill skill;
-		private int xp;
 		private int tick;
+		private int xp;
 	}
 }

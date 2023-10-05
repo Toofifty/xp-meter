@@ -1,62 +1,42 @@
 package com.toofifty.xpmeter;
 
 import java.awt.Color;
+import lombok.AllArgsConstructor;
 import net.runelite.api.Skill;
 
-public class SkillColor
+@AllArgsConstructor
+public enum SkillColor
 {
+	// must match order of Skill enum
+
+	ATTACK(new Color(145, 58, 42)),
+	DEFENCE(new Color(119, 133, 196)),
+	STRENGTH(new Color(57, 113, 78)),
+	HITPOINTS(new Color(167, 57, 30)),
+	RANGED(new Color(93, 111, 35)),
+	PRAYER(new Color(192, 185, 185)),
+	MAGIC(new Color(76, 77, 157)),
+	COOKING(new Color(109, 53, 137)),
+	WOODCUTTING(new Color(128, 110, 65)),
+	FLETCHING(new Color(65, 101, 105)),
+	FISHING(new Color(134, 172, 221)),
+	FIREMAKING(new Color(198, 135, 44)),
+	CRAFTING(new Color(115, 94, 71)),
+	SMITHING(new Color(84, 84, 67)),
+	MINING(new Color(81, 80, 65)),
+	HERBLORE(new Color(60, 139, 22)),
+	AGILITY(new Color(68, 68, 201)),
+	THIEVING(new Color(109, 71, 99)),
+	SLAYER(new Color(65, 54, 54)),
+	FARMING(new Color(57, 89, 45)),
+	RUNECRAFT(new Color(178, 178, 168)),
+	HUNTER(new Color(128, 124, 103)),
+	CONSTRUCTION(new Color(169, 159, 138));
+
+	private final Color color;
+
 	public static Color get(Skill skill)
 	{
-		switch (skill)
-		{
-			case AGILITY:
-				return new Color(68, 68, 201);
-			case ATTACK:
-				return new Color(145, 58, 42);
-			case CONSTRUCTION:
-				return new Color(169, 159, 138);
-			case COOKING:
-				return new Color(109, 53, 137);
-			case CRAFTING:
-				return new Color(115, 94, 71);
-			case DEFENCE:
-				return new Color(119, 133, 196);
-			case FARMING:
-				return new Color(57, 89, 45);
-			case FIREMAKING:
-				return new Color(198, 135, 44);
-			case FISHING:
-				return new Color(134, 172, 221);
-			case FLETCHING:
-				return new Color(65, 101, 105);
-			case HERBLORE:
-				return new Color(60, 139, 22);
-			case HITPOINTS:
-				return new Color(167, 57, 30);
-			case HUNTER:
-				return new Color(128, 124, 103);
-			case MAGIC:
-				return new Color(76, 77, 157);
-			case MINING:
-				return new Color(81, 80, 65);
-			case PRAYER:
-				return new Color(192, 185, 185);
-			case RANGED:
-				return new Color(93, 111, 35);
-			case RUNECRAFT:
-				return new Color(178, 178, 168);
-			case SLAYER:
-				return new Color(65, 54, 54);
-			case SMITHING:
-				return new Color(84, 84, 67);
-			case STRENGTH:
-				return new Color(57, 113, 78);
-			case THIEVING:
-				return new Color(109, 71, 99);
-			case WOODCUTTING:
-				return new Color(128, 110, 65);
-		}
-
-		return null;
+		return values()[skill.ordinal()].color;
 	}
 }

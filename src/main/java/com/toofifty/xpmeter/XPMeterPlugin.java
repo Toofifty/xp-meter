@@ -24,61 +24,47 @@ import net.runelite.client.ui.overlay.OverlayManager;
 )
 public class XPMeterPlugin extends Plugin
 {
-	@Inject
-	private Client client;
+	@Inject private Client client;
+	@Inject private OverlayManager overlayManager;
+	@Inject private ConfigManager configManager;
 
-	@Inject
-	private OverlayManager overlayManager;
-
-	@Inject
-	private ConfigManager configManager;
-
-	@Inject
-	private XPMeterConfig config;
-
-	@Inject
-	private XPTracker tracker;
-
-	@Inject
-	private XPMeterOverlay overlay;
-
-	private boolean overlayActive = false;
+	@Inject private XPMeterConfig config;
+	@Inject private XPTracker tracker;
+	@Inject private XPMeterOverlay overlay;
 
 	@Override
 	protected void startUp()
 	{
-		addOverlay();
-		updateConfig();
+		overlayManager.add(overlay);
+		syncConfig();
 	}
 
 	@Override
 	protected void shutDown()
 	{
-		removeOverlay();
+		overlayManager.remove(overlay);
 	}
 
 	@Subscribe
 	public void onStatChanged(StatChanged event)
 	{
 		tracker.track(event.getSkill(), event.getXp());
-
-		if (!overlayActive)
-		{
-			addOverlay();
-		}
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		if (!overlayActive || client.getGameState() != GameState.LOGGED_IN)
+		if (client.getGameState() != GameState.LOGGED_IN)
 		{
 			// TODO: track logout
 			return;
 		}
 
 		tracker.tick();
-		if (tracker.getTicks() % secondsToTicks(config.updateInterval()) == 0)
+		// only update histories every Nth tick, otherwise the plotted
+		// lines start to wobble (as the current tick changes, it calculates each
+		// history point off-phase which means the values are different every tick)
+		if (tracker.getCurrentTick() % secondsToTicks(config.updateInterval()) == 0)
 		{
 			overlay.update();
 		}
@@ -87,9 +73,9 @@ public class XPMeterPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (event.getGroup().equals("xp-meter"))
+		if (event.getGroup().equals(XPMeterConfig.GROUP_NAME))
 		{
-			updateConfig();
+			syncConfig();
 		}
 	}
 
@@ -101,14 +87,13 @@ public class XPMeterPlugin extends Plugin
 			return;
 		}
 
-		var intStack = client.getIntStack();
-		var intStackSize = client.getIntStackSize();
-
 		if ("scrollWheelZoomIncrement".equals(event.getEventName())
 			&& overlay.isMouseOver()
 			&& client.isKeyPressed(KeyCode.KC_SHIFT))
 		{
-			updateScroll(intStack[intStackSize - 2]);
+			final var intStack = client.getIntStack();
+
+			updateScroll(intStack[1]);
 
 			// this stops the client scroll - don't ask how
 			intStack[2] = -intStack[1];
@@ -119,9 +104,9 @@ public class XPMeterPlugin extends Plugin
 	 * Push config values into overlay, so they aren't
 	 * read every frame
 	 */
-	private void updateConfig()
+	private void syncConfig()
 	{
-		var shouldRecalculate = overlay.getChart().getSpan() != config.span();
+		final var shouldRecalculate = overlay.getChart().getSpan() != config.span();
 
 		overlay.setUpdateInterval(secondsToTicks(config.updateInterval()));
 		overlay.getChart().setSpan(secondsToTicks(config.span()));
@@ -142,36 +127,13 @@ public class XPMeterPlugin extends Plugin
 
 	private void updateScroll(int dir)
 	{
-		// min 5 so 1.2 can actually apply
-		var span = config.span();
-		if (dir == -1) // in
-		{
-			span /= 1.2;
-		}
-		else if (dir == 1) // out
-		{
-			span *= 1.2;
-		}
-
-		span = Math.max(span, 10);
+		final var span = (int) (config.span() * Math.pow(1.2, dir));
 
 		configManager.setConfiguration(
 			XPMeterConfig.GROUP_NAME,
 			"span",
-			span
+			Math.max(span, 10)
 		);
-	}
-
-	private void addOverlay()
-	{
-		overlayManager.add(overlay);
-		overlayActive = true;
-	}
-
-	private void removeOverlay()
-	{
-		overlayManager.remove(overlay);
-		overlayActive = false;
 	}
 
 	@Provides

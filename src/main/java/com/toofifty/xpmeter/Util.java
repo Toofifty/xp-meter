@@ -19,11 +19,11 @@ public class Util
 		final var hours = (int) (minutes / 60d);
 
 		return hours > 0
-			? String.format("%02d:%02d:%02d", hours, minutes % 60, seconds % 60)
+			? String.format("%d:%02d:%02d", hours, minutes % 60, seconds % 60)
 			: String.format("%02d:%02d", minutes % 60, seconds % 60);
 	}
 
-	public static String rsFormat(int number)
+	public static String format(int number)
 	{
 		if (number < 100000)
 		{
@@ -38,7 +38,7 @@ public class Util
 		return String.format("%,dM", number / 1000000);
 	}
 
-	public static String shortRsFormat(int number)
+	public static String shortFormat(int number)
 	{
 		if (number < 1000)
 		{

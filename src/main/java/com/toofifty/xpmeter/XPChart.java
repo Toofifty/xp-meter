@@ -1,10 +1,9 @@
 package com.toofifty.xpmeter;
 
 import com.google.common.collect.Lists;
-import static com.toofifty.xpmeter.Util.rsFormat;
+import static com.toofifty.xpmeter.Util.format;
 import static com.toofifty.xpmeter.Util.secondsToTicks;
-import static com.toofifty.xpmeter.Util.shortRsFormat;
-import static com.toofifty.xpmeter.Util.ticksToSeconds;
+import static com.toofifty.xpmeter.Util.shortFormat;
 import static com.toofifty.xpmeter.Util.ticksToTime;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -12,19 +11,19 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import net.runelite.api.Skill;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
 
-public class XPChart implements LayoutableRenderableEntity
+public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 {
 	public static final int MIN_WIDTH = 60;
 	public static final int SKILL_ICON_WIDTH = 16;
+
+	// padding
 
 	private static final int TIME_LABEL_TPAD = 2;
 	private static final int TIME_LABEL_SPACING = 4;
@@ -37,23 +36,16 @@ public class XPChart implements LayoutableRenderableEntity
 	private static final Color TIME_MARKER_COLOR = new Color(255, 255, 255, 32);
 
 	private static final Color BACKGROUND_COLOR = new Color(0, 0, 0, 32);
+	private static final Color RATE_BACKGROUND_COLOR = new Color(0, 0, 0, 64);
 
-	@Getter
-	@Setter
-	private Dimension preferredSize;
+	@Setter private Map<Skill, List<Point>> skillXpHistories = null;
 
-	@Getter
-	@Setter
-	private Point preferredLocation;
-
-	@Setter
-	private Map<Skill, List<net.runelite.api.Point>> skillXpHistories = null;
-
-	@Setter
-	private int maxXPPerHour = 0;
-
-	@Setter
-	private int currentTick = 0;
+	/**
+	 * Skill keys, sorted from the lowest current rate to highest
+	 */
+	@Setter private List<Skill> sortedSkills = null;
+	@Setter private int maxXPPerHour = 0;
+	@Setter private int currentTick = 0;
 
 	// configs
 
@@ -79,36 +71,190 @@ public class XPChart implements LayoutableRenderableEntity
 			return new Dimension(0, 0);
 		}
 
+		// antialias off results in thicker looking lines,
+		// and are better upscaled by xBR
 		graphics.setRenderingHint(
 			RenderingHints.KEY_ANTIALIASING,
 			RenderingHints.VALUE_ANTIALIAS_OFF
 		);
-		graphics.setFont(FontManager.getRunescapeSmallFont());
 
-		final var size = getBounds();
-		// initial starting point based on parent layout
-		final var loc = getPreferredLocation();
+		final var dimension = super.render(graphics);
 
-		final var marginLeft = calculateLeftMargin(graphics);
-		final var marginRight = calculateRightMargin(graphics);
-		final var marginTop = calculateTopMargin(graphics);
-		final var marginBottom = calculateBottomMargin(graphics);
-
-		final var margin = new Point(loc.x + marginLeft, loc.y + marginTop);
+		setHeightScale(maxXPPerHour);
+		setWidthMin(Math.max(currentTick - span, 0));
+		setWidthMax(currentTick);
 
 		// background
-		graphics.setColor(BACKGROUND_COLOR);
-		graphics.fillRect(margin.x, margin.y, size.width, size.height);
+		setColor(BACKGROUND_COLOR);
+		fillRect(0, 0, size.width, size.height);
 
-		drawXpLabels(graphics, size, margin);
-		drawTimeLabels(graphics, size, margin);
-		plotHistories(graphics, size, margin);
-		drawCurrentRates(graphics, size, margin);
+		drawXpLabels();
+		drawTimeLabels();
+		drawHistoryPlot();
+		drawCurrentRates();
 
-		return new Dimension(
-			marginLeft + size.width + marginRight,
-			marginTop + size.height + marginBottom
+		return dimension;
+	}
+
+	private void drawXpLabels()
+	{
+		final var xpIntervals = Intervals.getXpIntervals(maxXPPerHour);
+
+		if (showXpLabels)
+		{
+			var lastY = 0;
+			setColor(XP_LABEL_COLOR);
+			// reverse so topmost labels have priority
+			for (var xp : Lists.reverse(xpIntervals))
+			{
+				// no point rendering 0
+				if (xp == 0) continue;
+
+				final var label = shortFormat(xp);
+				final var x = -width(label) - XP_LABEL_RPAD;
+				final var y = mapY(xp, true) + fontHeight / 2;
+
+				// do not draw overlapping xps
+				if (y - fontHeight > lastY)
+				{
+					drawText(label, x, y);
+					lastY = y;
+				}
+			}
+		}
+
+		if (showXpMarkers)
+		{
+			setColor(XP_MARKER_COLOR);
+			for (var xp : xpIntervals)
+			{
+				drawHMarker(mapY(xp, true));
+			}
+		}
+	}
+
+	private void drawTimeLabels()
+	{
+		final var timeIntervals = Intervals.getTimeIntervals(
+			Math.max(currentTick - span, 0),
+			currentTick
 		);
+
+		var originX = Integer.MIN_VALUE;
+
+		// removing it now prevents the first marker
+		// from showing even if showTimeLabels is false
+		final var origin = timeIntervals.remove(0);
+		final var y = size.height + fontHeight + TIME_LABEL_TPAD;
+
+		if (showTimeLabels)
+		{
+			setColor(TIME_LABEL_COLOR);
+			{
+				final var time = ticksToTime(origin);
+				final var width = width(time);
+				final var x = mapX(origin) - width / 2;
+
+				drawText(time, x, y);
+
+				originX = x + width + TIME_LABEL_SPACING;
+			}
+
+			var lastX = Integer.MAX_VALUE;
+			// reverse so rightmost labels have priority
+			for (var timeTick : Lists.reverse(timeIntervals))
+			{
+				final var time = ticksToTime(timeTick);
+				final var width = width(time);
+				final var x = mapX(timeTick) - width / 2;
+
+				// do not draw overlapping times
+				// (either on next time to the right, or origin)
+				if (x + width < lastX && x > originX)
+				{
+					drawText(time, x, y);
+
+					lastX = x - TIME_LABEL_SPACING;
+				}
+			}
+		}
+
+		if (showTimeMarkers)
+		{
+			setColor(TIME_MARKER_COLOR);
+			for (var timeTick : timeIntervals)
+			{
+				drawVMarker(mapX(timeTick));
+			}
+		}
+	}
+
+	private void drawCurrentRates()
+	{
+		if (!showCurrentRates && !showSkillIcons)
+		{
+			return;
+		}
+
+		final var x = size.width + CURR_RATE_LPAD;
+
+		for (var skill : sortedSkills)
+		{
+			final var skillColor = SkillColor.get(skill);
+			final var history = skillXpHistories.get(skill);
+			final var last = history.get(history.size() - 1);
+
+			if (last != null && last.getY() != 0)
+			{
+				final var rate = showSkillIcons
+					? shortFormat(last.y)
+					: format(last.y);
+
+				final var y = mapY(last.y, true);
+
+				// TODO: skill icons
+
+				if (showCurrentRates)
+				{
+					setColor(RATE_BACKGROUND_COLOR);
+					fillRoundRect(x - 1, y - fontHeight / 2 - 1, width(rate) + 2, fontHeight + 2, 2);
+					setColor(skillColor);
+					drawText(rate, x, y + fontHeight / 2, true);
+				}
+			}
+		}
+	}
+
+	private void drawHistoryPlot()
+	{
+		for (var skill : sortedSkills)
+		{
+			setColor(SkillColor.get(skill));
+			var isFlatlining = false;
+
+			Point prev = null;
+			for (var point : skillXpHistories.get(skill))
+			{
+				final var x = mapX(point.x);
+				final var y = mapY(point.y, true);
+
+				// flat lining if xp = 0, and trying to draw at same y coord
+				isFlatlining = prev != null && point.getY() == 0 && prev.y == y;
+
+				if (prev != null && !isFlatlining)
+				{
+					drawLine(prev.x, prev.y, x, y, true);
+				}
+
+				prev = new Point(x, y);
+			}
+
+			// draw to end of chart
+			if (prev != null && !isFlatlining)
+			{
+				drawLine(prev.x, prev.y, size.width, prev.y, true);
+			}
+		}
 	}
 
 	@Override
@@ -117,6 +263,7 @@ public class XPChart implements LayoutableRenderableEntity
 		final var size = getPreferredSize();
 		if (size == null)
 		{
+			// default size
 			return new Rectangle(
 				XPMeterOverlay.DEFAULT_WIDTH,
 				chartHeight
@@ -129,323 +276,15 @@ public class XPChart implements LayoutableRenderableEntity
 		);
 	}
 
-	private void drawXpLabels(Graphics2D graphics, Rectangle size, Point loc)
-	{
-		final var xpIntervals = getXpIntervals();
-		graphics.setColor(XP_LABEL_COLOR);
-
-		final var availableHeight = getAvailableHeight(graphics, size);
-		final var yOffset = getYOffset(graphics, loc);
-
-		if (showXpLabels)
-		{
-			for (var xp : xpIntervals)
-			{
-				// no point rendering 0
-				if (xp == 0) continue;
-
-				final var y = availableHeight - xp * availableHeight / maxXPPerHour;
-				final var label = shortRsFormat(xp);
-				final var width = graphics.getFontMetrics().stringWidth(label);
-				final var height = graphics.getFontMetrics().getHeight();
-
-				graphics.drawString(
-					label,
-					loc.x - width - XP_LABEL_RPAD,
-					yOffset + y + height / 2
-				);
-			}
-		}
-
-		if (showXpMarkers)
-		{
-			graphics.setColor(XP_MARKER_COLOR);
-			for (var xp : xpIntervals)
-			{
-				final var y = availableHeight - xp * availableHeight / maxXPPerHour;
-
-				graphics.drawLine(
-					loc.x, yOffset + y,
-					loc.x + size.width, yOffset + y
-				);
-			}
-		}
-	}
-
-	private List<Integer> getXpIntervals()
-	{
-		var interval = 500_000;
-		if (maxXPPerHour < 10_000)
-		{
-			interval = 5_000;
-		}
-		else if (maxXPPerHour < 25_000)
-		{
-			interval = 10_000;
-		}
-		else if (maxXPPerHour < 100_000)
-		{
-			interval = 25_000;
-		}
-		else if (maxXPPerHour < 250_000)
-		{
-			interval = 100_000;
-		}
-		else if (maxXPPerHour < 500_000)
-		{
-			interval = 250_000;
-		}
-
-		final var xpIntervals = new ArrayList<Integer>();
-		for (var i = 0; i < maxXPPerHour; i += interval)
-		{
-			xpIntervals.add(i);
-		}
-		return xpIntervals;
-	}
-
-	private void drawTimeLabels(Graphics2D graphics, Rectangle size, Point loc)
-	{
-		final var timeIntervals = getTimeIntervals();
-		graphics.setColor(TIME_LABEL_COLOR);
-
-		final var fontHeight = graphics.getFontMetrics().getHeight();
-
-		var originX = Integer.MIN_VALUE;
-
-		// removing it now prevents the first marker
-		// from showing even if showTimeLabels is false
-		final var origin = timeIntervals.remove(0);
-
-		if (showTimeLabels)
-		{
-			{
-				final var x = tickToX(origin);
-				final var time = ticksToTime(origin);
-				final var width = graphics.getFontMetrics().stringWidth(time);
-
-				graphics.drawString(
-					time,
-					loc.x + (x - width / 2),
-					loc.y + size.height + fontHeight + TIME_LABEL_TPAD
-				);
-
-				originX = x + width / 2 + TIME_LABEL_SPACING;
-			}
-
-			// reverse so rightmost labels have priority
-			var lastX = Integer.MAX_VALUE;
-			for (var timeTick : Lists.reverse(timeIntervals))
-			{
-				final var x = tickToX(timeTick);
-
-				final var time = ticksToTime(timeTick);
-				final var width = graphics.getFontMetrics().stringWidth(time);
-
-				// do not draw overlapping times
-				// (either on next time to the right, or origin)
-				if (x + width / 2 < lastX && x - width / 2 > originX)
-				{
-					graphics.drawString(
-						time,
-						loc.x + (x - width / 2),
-						loc.y + size.height + fontHeight + TIME_LABEL_TPAD
-					);
-
-					lastX = x - width / 2 - TIME_LABEL_SPACING;
-				}
-			}
-		}
-
-		if (showTimeMarkers)
-		{
-			graphics.setColor(TIME_MARKER_COLOR);
-			for (var timeTick : timeIntervals)
-			{
-				final var x = tickToX(timeTick);
-				graphics.drawLine(
-					loc.x + x, loc.y,
-					loc.x + x, loc.y + size.height
-				);
-			}
-		}
-	}
-
-	private List<Integer> getTimeIntervals()
-	{
-		final var chartSpan = ticksToSeconds(Math.min(span, currentTick));
-
-		var interval = secondsToTicks(3600);
-		if (chartSpan < secondsToTicks(120)) // 2min
-		{
-			interval = secondsToTicks(15);
-		}
-		else if (chartSpan < secondsToTicks(240)) // 4min
-		{
-			interval = secondsToTicks(30);
-		}
-		else if (chartSpan < secondsToTicks(480)) // 8min
-		{
-			interval = secondsToTicks(60);
-		}
-		else if (chartSpan < secondsToTicks(1800)) // 30min
-		{
-			interval = secondsToTicks(300);
-		}
-		else if (chartSpan < secondsToTicks(3600)) // 1h
-		{
-			interval = secondsToTicks(900);
-		}
-		else if (chartSpan < secondsToTicks(7200)) // 2h
-		{
-			interval = secondsToTicks(1800);
-		}
-
-		final var timeIntervals = new ArrayList<Integer>();
-		final var spanStart = Math.max(currentTick - span, 0);
-
-		// always add span start time
-		timeIntervals.add(spanStart);
-
-		// generate all time intervals up to current tick
-		// only keep if > spanStart
-		for (var i = 0; i < currentTick; i += interval)
-		{
-			if (i > spanStart) timeIntervals.add(i);
-		}
-
-		// always add current time
-		timeIntervals.add(currentTick);
-
-		return timeIntervals;
-	}
-
-	private void drawCurrentRates(Graphics2D graphics, Rectangle size, Point loc)
-	{
-		if (!showCurrentRates && !showSkillIcons)
-		{
-			return;
-		}
-
-		final var availableHeight = getAvailableHeight(graphics, size);
-		final var yOffset = getYOffset(graphics, loc);
-
-		for (var skill : skillXpHistories.keySet())
-		{
-			final var color = SkillColor.get(skill);
-			final var history = skillXpHistories.get(skill);
-			final var last = history.get(history.size() - 1);
-
-			if (last != null && last.getY() != 0)
-			{
-				final var rate = showSkillIcons
-					? shortRsFormat(last.getY())
-					: rsFormat(last.getY());
-				final var width = CURR_RATE_LPAD + graphics.getFontMetrics().stringWidth(rate);
-
-				final var y = availableHeight - last.getY() * availableHeight / maxXPPerHour
-					+ graphics.getFontMetrics().getHeight() / 2;
-
-				if (showCurrentRates)
-				{
-					// shadow
-					graphics.setColor(Color.BLACK);
-					graphics.drawString(
-						rate,
-						loc.x + size.width + CURR_RATE_LPAD + 1,
-						yOffset + y + 1
-					);
-					graphics.setColor(color);
-					graphics.drawString(
-						rate,
-						loc.x + size.width + CURR_RATE_LPAD,
-						yOffset + y
-					);
-				}
-			}
-		}
-	}
-
-	private void plotHistories(Graphics2D graphics, Rectangle size, Point loc)
-	{
-		final var availableHeight = getAvailableHeight(graphics, size);
-		final var yOffset = getYOffset(graphics, loc);
-
-		for (var skill : skillXpHistories.keySet())
-		{
-			final var color = SkillColor.get(skill);
-			var isFlatlining = false;
-
-			Point prev = null;
-			for (var point : skillXpHistories.get(skill))
-			{
-				final var x = tickToX(point.getX());
-				final var y = availableHeight - point.getY() * availableHeight / maxXPPerHour;
-
-				// flat lining if xp = 0, and trying to draw at same y coord
-				isFlatlining = prev != null && point.getY() == 0 && prev.y == y;
-
-				if (prev != null && !isFlatlining)
-				{
-					// shadow
-					graphics.setColor(Color.BLACK);
-					graphics.drawLine(
-						loc.x + prev.x + 1, yOffset + prev.y + 1,
-						loc.x + x + 1, yOffset + y + 1
-					);
-					// line
-					graphics.setColor(color);
-					graphics.drawLine(
-						loc.x + prev.x, yOffset + prev.y,
-						loc.x + x, yOffset + y
-					);
-				}
-
-				prev = new Point(x, y);
-			}
-
-			// draw to end of chart
-			if (prev != null && !isFlatlining)
-			{
-				// shadow
-				graphics.setColor(Color.BLACK);
-				graphics.drawLine(
-					loc.x + prev.x + 1, yOffset + prev.y + 1,
-					loc.x + size.width + 1, yOffset + prev.y + 1
-				);
-				// line
-				graphics.setColor(color);
-				graphics.drawLine(
-					loc.x + prev.x, yOffset + prev.y,
-					loc.x + size.width, yOffset + prev.y
-				);
-			}
-		}
-	}
-
-	/**
-	 * Translate absolute game tick to relative
-	 * X position in chart (not including parent offset)
-	 */
-	private int tickToX(int t)
-	{
-		final var size = getBounds();
-		final var spanStart = Math.max(currentTick - span, 0);
-		final var tickInSpan = t - spanStart;
-
-		return (tickInSpan * size.width) / Math.min(currentTick, span);
-	}
-
-	private int calculateLeftMargin(Graphics2D graphics)
+	@Override
+	protected int calculateLeftMargin()
 	{
 		var xpLabelWidth = 0;
 		if (showXpLabels)
 		{
-			for (var xp : getXpIntervals())
+			for (var xp : Intervals.getXpIntervals(maxXPPerHour))
 			{
-				final var label = shortRsFormat(xp);
-				final var width = graphics.getFontMetrics().stringWidth(label)
-					+ XP_LABEL_RPAD;
+				final var width = width(shortFormat(xp)) + XP_LABEL_RPAD;
 				if (width > xpLabelWidth)
 				{
 					xpLabelWidth = width;
@@ -453,24 +292,26 @@ public class XPChart implements LayoutableRenderableEntity
 			}
 		}
 
-		// width of half "00:00"
+		// width of half "00:00" or "0:00:00"
 		// (using actual origin time would cause the entire chart
 		// to jiggle)
 		final var originTimeWidth = showTimeLabels
-			? graphics.getFontMetrics().stringWidth(ticksToTime(0)) / 2
+			? width(ticksToTime(currentTick > 6000 ? 6000 : 0)) / 2
 			: 0;
 
 		return Math.max(xpLabelWidth, originTimeWidth);
 	}
 
-	private int calculateTopMargin(Graphics2D graphics)
+	@Override
+	protected int calculateTopMargin()
 	{
 		// should not need a margin - chart will already be a little
 		// taller than any graphics
 		return 0;
 	}
 
-	private int calculateRightMargin(Graphics2D graphics)
+	@Override
+	protected int calculateRightMargin()
 	{
 		// width of the largest current rate
 		var currentRateWidth = 0;
@@ -479,52 +320,33 @@ public class XPChart implements LayoutableRenderableEntity
 			for (var rates : skillXpHistories.values())
 			{
 				final var last = rates.get(rates.size() - 1);
-				if (last != null)
+				if (last == null)
 				{
-					final var text = showSkillIcons
-						? shortRsFormat(last.getY())
-						: rsFormat(last.getY());
-					var width = showCurrentRates
-						? graphics.getFontMetrics().stringWidth(text)
-						+ CURR_RATE_LPAD
-						: 0;
-					if (showSkillIcons)
-					{
-						width += SKILL_ICON_WIDTH;
-					}
+					continue;
+				}
 
-					if (width > currentRateWidth)
-					{
-						currentRateWidth = width;
-					}
+				final var text = showSkillIcons ? shortFormat(last.y) : format(last.y);
+				final var width = (showCurrentRates ? width(text) + CURR_RATE_LPAD : 0)
+					+ (showSkillIcons ? SKILL_ICON_WIDTH : 0);
+
+				if (width > currentRateWidth)
+				{
+					currentRateWidth = width;
 				}
 			}
 		}
 
 		// width of half current time
 		final var currentTimeWidth = showTimeLabels
-			? graphics.getFontMetrics().stringWidth(ticksToTime(currentTick)) / 2
+			? width(ticksToTime(currentTick)) / 2
 			: 0;
 
 		return Math.max(currentRateWidth, currentTimeWidth);
 	}
 
-	private int calculateBottomMargin(Graphics2D graphics)
+	@Override
+	protected int calculateBottomMargin()
 	{
-		return showTimeLabels
-			? graphics.getFontMetrics().getHeight()
-			: 0;
-	}
-
-	private int getYOffset(Graphics2D graphics, Point loc)
-	{
-		// always allow room for half a text line at the top
-		return loc.y + graphics.getFontMetrics().getHeight() / 2;
-	}
-
-	private int getAvailableHeight(Graphics2D graphics, Rectangle size)
-	{
-		// always allow room for half a text line at the top
-		return size.height - graphics.getFontMetrics().getHeight() / 2;
+		return showTimeLabels ? fontHeight : 0;
 	}
 }
