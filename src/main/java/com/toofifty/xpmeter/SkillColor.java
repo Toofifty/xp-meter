@@ -27,7 +27,7 @@ public enum SkillColor
 	HERBLORE(new Color(60, 139, 22)),
 	AGILITY(new Color(68, 68, 201)),
 	THIEVING(new Color(109, 71, 99)),
-	SLAYER(new Color(65, 54, 54)),
+	SLAYER(new Color(104, 95, 95)),
 	FARMING(new Color(57, 89, 45)),
 	RUNECRAFT(new Color(178, 178, 168)),
 	HUNTER(new Color(128, 124, 103)),

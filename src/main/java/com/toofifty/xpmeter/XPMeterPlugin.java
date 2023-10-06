@@ -37,7 +37,7 @@ public class XPMeterPlugin extends Plugin
 	protected void startUp()
 	{
 		overlayManager.add(overlay);
-		syncConfig();
+		syncConfig(null);
 	}
 
 	@Override
@@ -69,9 +69,9 @@ public class XPMeterPlugin extends Plugin
 		// only update histories every Nth tick, otherwise the plotted
 		// lines start to wobble (as the current tick changes, it calculates each
 		// history point off-phase which means the values are different every tick)
-		if (tracker.getCurrentTick() % secondsToTicks(config.updateInterval()) == 0)
+		if (tracker.getCurrentTick() % secondsToTicks(config.resolution()) == 0)
 		{
-			overlay.update();
+			update();
 		}
 	}
 
@@ -91,7 +91,7 @@ public class XPMeterPlugin extends Plugin
 	{
 		if (event.getGroup().equals(XPMeterConfig.GROUP_NAME))
 		{
-			syncConfig();
+			syncConfig(event.getKey());
 		}
 	}
 
@@ -120,27 +120,50 @@ public class XPMeterPlugin extends Plugin
 	 * Push config values into overlay, so they aren't
 	 * read every frame
 	 */
-	private void syncConfig()
+	private void syncConfig(String changedKey)
 	{
-		final var shouldRecalculate = overlay.getChart().getSpan() != config.span();
+		final var chart = overlay.getChart();
 
-		overlay.setUpdateInterval(secondsToTicks(config.updateInterval()));
-		overlay.getChart().setUpdateInterval(secondsToTicks(config.updateInterval()));
-		overlay.getChart().setSpan(secondsToTicks(config.span()));
-		overlay.getChart().setChartHeight(config.chartHeight());
-		overlay.getChart().setShowTimeLabels(config.showTimeLabels());
-		overlay.getChart().setShowTimeMarkers(config.showTimeMarkers());
-		overlay.getChart().setShowXpLabels(config.showXpLabels());
-		overlay.getChart().setShowXpMarkers(config.showXpMarkers());
-		overlay.getChart().setShowCurrentRates(config.showCurrentRates());
-		overlay.getChart().setShowSkillIcons(config.showSkillIcons());
-		overlay.getChart().setShowMouseHover(config.mouseHover());
+		chart.setResolution(secondsToTicks(config.resolution()));
+		chart.setSpan(secondsToTicks(config.span()));
+		chart.setChartHeight(config.chartHeight());
+		chart.setShowTimeLabels(config.showTimeLabels());
+		chart.setShowTimeMarkers(config.showTimeMarkers());
+		chart.setShowXpLabels(config.showXpLabels());
+		chart.setShowXpMarkers(config.showXpMarkers());
+		chart.setShowCurrentRates(config.showCurrentRates());
+		chart.setShowSkillIcons(config.showSkillIcons());
+		chart.setLongFormatNumbers(config.longFormatNumbers());
+		chart.setShowPerformance(config.showPerformance());
+		chart.setShowHoverTooltips(config.showHoverTooltips());
+		chart.setDimNonHoveredSkills(config.dimNonHoveredSkills());
+		chart.setShowAllHovers(config.showAllHovers());
 
-		if (shouldRecalculate)
+		if ("windowInterval".equals(changedKey)
+			|| "trackingMode".equals(changedKey))
 		{
-			// re-calculate to update span
-			overlay.update();
+			tracker.clearCache();
 		}
+
+		if ("span".equals(changedKey))
+		{
+			// stops line segments overflowing the chart
+			// before the next update tick
+			update();
+		}
+	}
+
+	private void update()
+	{
+		final var chart = overlay.getChart();
+
+		chart.setSkillXpHistories(tracker.getAggregate());
+		chart.setSortedSkills(tracker.getSortedSkills());
+		chart.setMaxXpPerHour(tracker.getMaxXpPerHour());
+		chart.setCurrentTick(tracker.getCurrentTick());
+		chart.setPauses(tracker.getPauses());
+		chart.setLogouts(tracker.getLogouts());
+		chart.setPerformance(tracker.getPerformance());
 	}
 
 	private void updateScroll(int dir)

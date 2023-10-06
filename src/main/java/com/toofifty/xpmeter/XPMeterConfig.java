@@ -46,17 +46,17 @@ public interface XPMeterConfig extends Config
 	}
 
 	@ConfigItem(
-		name = "Update interval",
-		keyName = "updateInterval",
-		description = "Plot a point on the chart every X seconds",
+		name = "Resolution",
+		keyName = "resolution",
+		description = "How frequently the plot updates",
 		position = 3,
 		section = tracking
 	)
 	@Units(Units.SECONDS)
 	@Range(min = 1)
-	default int updateInterval()
+	default int resolution()
 	{
-		return 1;
+		return 5;
 	}
 
 	@ConfigSection(
@@ -166,6 +166,42 @@ public interface XPMeterConfig extends Config
 		return false;
 	}
 
+	@ConfigItem(
+		name = "Long format numbers",
+		keyName = "longFormatNumbers",
+		description = "Show all rates in a longer format. e.g. 69,420 instead of 69K, or 1,200K instead of 1M",
+		section = display,
+		position = 9
+	)
+	default boolean longFormatNumbers()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		name = "Show performance",
+		keyName = "showPerformance",
+		description = "Show debugging performance metrics like compute time / cache info",
+		section = display,
+		position = 10
+	)
+	default boolean showPerformance()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		name = "Use cache",
+		keyName = "useCache",
+		description = "",
+		section = display,
+		position = 11
+	)
+	default boolean useCache()
+	{
+		return false;
+	}
+
 	@ConfigSection(
 		name = "Interactivity",
 		description = "Interactivity settings",
@@ -175,12 +211,36 @@ public interface XPMeterConfig extends Config
 
 	@ConfigItem(
 		name = "Hover effects",
-		keyName = "mouseHover",
-		description = "Show momentary XP rates when hovering over the overlay",
+		keyName = "showHoverTooltips",
+		description = "Show momentary XP rates when hovering over the chart",
 		section = interactivity,
 		position = 1
 	)
-	default boolean mouseHover()
+	default boolean showHoverTooltips()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Dim non-hovered skills",
+		keyName = "dimNonHoveredSkills",
+		description = "Dim other skills when hovering to make it easier to see the target skill's plot",
+		section = interactivity,
+		position = 2
+	)
+	default boolean dimNonHoveredSkills()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		name = "Display all tooltips",
+		keyName = "showAllHovers",
+		description = "Toggle between showing 1 or all skills when hovering over the chart",
+		section = interactivity,
+		position = 3
+	)
+	default boolean showAllHovers()
 	{
 		return true;
 	}
@@ -190,7 +250,7 @@ public interface XPMeterConfig extends Config
 		keyName = "scrollZoom",
 		description = "Hold Shift + scroll over the overlay to adjust the display span",
 		section = interactivity,
-		position = 2
+		position = 4
 	)
 	default boolean scrollZoom()
 	{
