@@ -69,7 +69,7 @@ public interface XPMeterConfig extends Config
 	@ConfigItem(
 		name = "Span",
 		keyName = "span",
-		description = "Show the last X seconds in the overlay",
+		description = "Show the last X seconds in the chart",
 		position = 1,
 		section = display
 	)
