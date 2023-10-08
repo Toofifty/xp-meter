@@ -180,6 +180,8 @@ public class XPTracker
 		xpGained.clear();
 		startTicks.clear();
 		cache.clear();
+		pauses.clear();
+		logouts.clear();
 		currentTick = 0;
 	}
 
