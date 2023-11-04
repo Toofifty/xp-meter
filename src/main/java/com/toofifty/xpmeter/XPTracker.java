@@ -54,7 +54,7 @@ public class XPTracker
 
 	public void track(Skill skill, int xp)
 	{
-		if (paused || xp == 0)
+		if (paused)
 		{
 			return;
 		}
@@ -68,7 +68,10 @@ public class XPTracker
 			}
 
 			final var diff = xp - lastXp.get(skill);
-			xpGained.get(skill).add(new XPGain(currentTick, diff));
+			if (diff != 0)
+			{
+				xpGained.get(skill).add(new XPGain(currentTick, diff));
+			}
 		}
 
 		lastXp.put(skill, xp);
