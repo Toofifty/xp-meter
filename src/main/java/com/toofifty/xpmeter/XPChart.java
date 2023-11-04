@@ -30,6 +30,8 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final int XP_LABEL_RPAD = 2;
 	private static final int CURR_RATE_LPAD = 4;
 
+	private static final int XP_TOOLTIP_LPAD = 8;
+
 	private static final Color XP_LABEL_COLOR = new Color(255, 255, 255, 128);
 	private static final Color XP_MARKER_COLOR = new Color(0, 0, 0, 32);
 	private static final Color TIME_LABEL_COLOR = new Color(255, 255, 255, 128);
@@ -359,23 +361,11 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		}
 
 		// offset by half updateInterval to pseudo "round up"
-		final var hoveredTick = unmapX(mx) + resolution / 2;
-		// the span start can be off-phase from the updateInterval,
-		// so the correction is added so hoveredInterval always lands
-		// on a number divisible by updateInterval
-		final var spanStartCorrection = Math.max(currentTick - span, 0) % resolution;
-		final var hoveredInterval = hoveredTick - hoveredTick % resolution
-			+ spanStartCorrection;
-
-		// TODO: both add and sub correction from interval, then use closest to original x
-		// if sub < 0, use add
-		// if add > width, use sub
-
-		// map back to x for visual clarity
-		final var x = mapX(hoveredInterval) + CURR_RATE_LPAD;
+		final var hoveredTick = unmapX(mx);
+		final var x = mx + XP_TOOLTIP_LPAD;
 
 		setColor(CURSOR_MARKER_COLOR);
-		drawVMarker(x - CURR_RATE_LPAD);
+		drawVMarker(mx);
 
 		var closestY = Integer.MIN_VALUE;
 		var closestXp = 0;
@@ -384,17 +374,26 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		for (var skill : skillXpHistories.keySet())
 		{
 			final var history = skillXpHistories.get(skill);
-			final var dataPoint = history.stream()
-				.filter(point -> point.x == hoveredInterval)
-				.findFirst().orElse(null);
 
-			if (dataPoint != null && dataPoint.y != 0)
+			var closestDist = Integer.MAX_VALUE;
+			Point closest = null;
+			for (var dataPoint : history)
 			{
-				final var y = mapY(dataPoint.y, true);
+				final var dist = Math.abs(dataPoint.x - hoveredTick);
+				if (dist < closestDist)
+				{
+					closestDist = dist;
+					closest = dataPoint;
+				}
+			}
+
+			if (closest != null && closest.y != 0)
+			{
+				final var y = mapY(closest.y, true);
 				if (Math.abs(y - mouse.y) < Math.abs(closestY - mouse.y))
 				{
 					closestY = y;
-					closestXp = dataPoint.y;
+					closestXp = closest.y;
 					closestSkill = skill;
 				}
 
@@ -403,7 +402,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 					continue;
 				}
 
-				final var label = skill.getName() + ": " + format(dataPoint.y) + "/hr";
+				final var label = skill.getName() + ": " + format(closest.y) + "/hr";
 
 				setColor(TOOLTIP_BACKGROUND_COLOR);
 				fillRoundRect(x - 1, y - fontHeight / 2 - 1, width(label) + 2, fontHeight + 2, 2);
