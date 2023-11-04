@@ -178,30 +178,6 @@ public interface XPMeterConfig extends Config
 		return false;
 	}
 
-	@ConfigItem(
-		name = "Show performance",
-		keyName = "showPerformance",
-		description = "Show debugging performance metrics like compute time / cache info",
-		section = display,
-		position = 10
-	)
-	default boolean showPerformance()
-	{
-		return false;
-	}
-
-	@ConfigItem(
-		name = "Use cache",
-		keyName = "useCache",
-		description = "",
-		section = display,
-		position = 11
-	)
-	default boolean useCache()
-	{
-		return false;
-	}
-
 	@ConfigSection(
 		name = "Interactivity",
 		description = "Interactivity settings",
@@ -255,5 +231,61 @@ public interface XPMeterConfig extends Config
 	default boolean scrollZoom()
 	{
 		return false;
+	}
+
+	@ConfigSection(
+		name = "Debugging",
+		description = "Developer tools for debugging",
+		position = 4,
+		closedByDefault = true
+	)
+	String debugging = "debugging";
+
+	@ConfigItem(
+		name = "Show performance",
+		keyName = "showPerformance",
+		description = "Show debugging performance metrics like compute time / cache info",
+		section = display,
+		position = 1
+	)
+	default boolean showPerformance()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		name = "Disable cache",
+		keyName = "disableCache",
+		description = "Disables caching computed values. Disabling this can have a large performance impact.",
+		section = debugging,
+		position = 2
+	)
+	default boolean disableCache()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		name = "Enable data import/export",
+		keyName = "enableDataMenuOptions",
+		description = "Enables data import and export tool options when shift + right-clicking the overlay",
+		section = debugging,
+		position = 3
+	)
+	default boolean enableDataMenuOptions()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		name = "Session data",
+		keyName = "sessionData",
+		description = "Result of the last data export",
+		section = debugging,
+		position = 4
+	)
+	default String sessionData()
+	{
+		return "";
 	}
 }

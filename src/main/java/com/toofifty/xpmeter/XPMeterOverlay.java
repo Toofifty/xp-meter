@@ -26,7 +26,7 @@ public class XPMeterOverlay extends OverlayPanel
 	@Getter private boolean isMouseOver = false;
 
 	@Inject
-	private XPMeterOverlay(SkillIconManager skillIconManager)
+	private XPMeterOverlay(SkillIconManager skillIconManager, XPMeterConfig config)
 	{
 		if (getPreferredSize() == null)
 		{
@@ -47,10 +47,10 @@ public class XPMeterOverlay extends OverlayPanel
 			e -> tracker.reset()
 		);
 
-		updateMenuEntries();
+		updateMenuEntries(config.enableDataMenuOptions());
 	}
 
-	public void updateMenuEntries()
+	public void updateMenuEntries(boolean enableDataMenuOptions)
 	{
 		removeMenuEntry(MenuAction.RUNELITE_OVERLAY, "Pause", "XP Meter");
 		removeMenuEntry(MenuAction.RUNELITE_OVERLAY, "Unpause", "XP Meter");
@@ -70,9 +70,18 @@ public class XPMeterOverlay extends OverlayPanel
 					tracker.pause();
 				}
 
-				updateMenuEntries();
+				updateMenuEntries(enableDataMenuOptions);
 			}
 		);
+
+		removeMenuEntry(MenuAction.RUNELITE_OVERLAY, "Export data", "XP Meter");
+		removeMenuEntry(MenuAction.RUNELITE_OVERLAY, "Restore data", "XP Meter");
+
+		if (enableDataMenuOptions)
+		{
+			addMenuEntry(MenuAction.RUNELITE_OVERLAY, "Export data", "XP Meter");
+			addMenuEntry(MenuAction.RUNELITE_OVERLAY, "Restore data", "XP Meter");
+		}
 	}
 
 	@Override

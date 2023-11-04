@@ -14,6 +14,7 @@ import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
@@ -92,6 +93,31 @@ public class XPMeterPlugin extends Plugin
 		if (event.getGroup().equals(XPMeterConfig.GROUP_NAME))
 		{
 			syncConfig(event.getKey());
+
+			if (event.getKey().equals("enableDataMenuOptions"))
+			{
+				overlay.updateMenuEntries(config.enableDataMenuOptions());
+			}
+		}
+	}
+
+	@Subscribe
+	public void onOverlayMenuClicked(OverlayMenuClicked event)
+	{
+		if (event.getOverlay() == overlay)
+		{
+			if (event.getEntry().getOption().equals("Export data"))
+			{
+				configManager.setConfiguration(
+					XPMeterConfig.GROUP_NAME,
+					"sessionData",
+					tracker.export()
+				);
+			}
+			else if (event.getEntry().getOption().equals("Restore data"))
+			{
+				tracker.restore(config.sessionData());
+			}
 		}
 	}
 
