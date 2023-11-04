@@ -60,9 +60,293 @@ public interface XPMeterConfig extends Config
 	}
 
 	@ConfigSection(
+		name = "Skills",
+		description = "Skill filtering",
+		position = 2,
+		closedByDefault = true
+	)
+	String skills = "skills";
+
+	@ConfigItem(
+		name = "Attack",
+		keyName = "trackAttack",
+		description = "Track Attack",
+		position = 1,
+		section = skills
+	)
+	default boolean trackAttack()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Defence",
+		keyName = "trackDefence",
+		description = "Track Defence",
+		position = 2,
+		section = skills
+	)
+	default boolean trackDefence()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Strength",
+		keyName = "trackStrength",
+		description = "Track Strength",
+		position = 3,
+		section = skills
+	)
+	default boolean trackStrength()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Hitpoints",
+		keyName = "trackHitpoints",
+		description = "Track Hitpoints",
+		position = 4,
+		section = skills
+	)
+	default boolean trackHitpoints()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Ranged",
+		keyName = "trackRanged",
+		description = "Track Ranged",
+		position = 5,
+		section = skills
+	)
+	default boolean trackRanged()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Prayer",
+		keyName = "trackPrayer",
+		description = "Track Prayer",
+		position = 6,
+		section = skills
+	)
+	default boolean trackPrayer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Magic",
+		keyName = "trackMagic",
+		description = "Track Magic",
+		position = 7,
+		section = skills
+	)
+	default boolean trackMagic()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Cooking",
+		keyName = "trackCooking",
+		description = "Track Cooking",
+		position = 8,
+		section = skills
+	)
+	default boolean trackCooking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Woodcutting",
+		keyName = "trackWoodcutting",
+		description = "Track Woodcutting",
+		position = 9,
+		section = skills
+	)
+	default boolean trackWoodcutting()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Fletching",
+		keyName = "trackFletching",
+		description = "Track Fletching",
+		position = 10,
+		section = skills
+	)
+	default boolean trackFletching()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Fishing",
+		keyName = "trackFishing",
+		description = "Track Fishing",
+		position = 11,
+		section = skills
+	)
+	default boolean trackFishing()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Firemaking",
+		keyName = "trackFiremaking",
+		description = "Track Firemaking",
+		position = 12,
+		section = skills
+	)
+	default boolean trackFiremaking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Crafting",
+		keyName = "trackCrafting",
+		description = "Track Crafting",
+		position = 13,
+		section = skills
+	)
+	default boolean trackCrafting()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Smithing",
+		keyName = "trackSmithing",
+		description = "Track Smithing",
+		position = 14,
+		section = skills
+	)
+	default boolean trackSmithing()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Mining",
+		keyName = "trackMining",
+		description = "Track Mining",
+		position = 15,
+		section = skills
+	)
+	default boolean trackMining()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Herblore",
+		keyName = "trackHerblore",
+		description = "Track Herblore",
+		position = 16,
+		section = skills
+	)
+	default boolean trackHerblore()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Agility",
+		keyName = "trackAgility",
+		description = "Track Agility",
+		position = 17,
+		section = skills
+	)
+	default boolean trackAgility()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Thieving",
+		keyName = "trackThieving",
+		description = "Track Thieving",
+		position = 18,
+		section = skills
+	)
+	default boolean trackThieving()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Slayer",
+		keyName = "trackSlayer",
+		description = "Track Slayer",
+		position = 19,
+		section = skills
+	)
+	default boolean trackSlayer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Farming",
+		keyName = "trackFarming",
+		description = "Track Farming",
+		position = 20,
+		section = skills
+	)
+	default boolean trackFarming()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Runecraft",
+		keyName = "trackRunecraft",
+		description = "Track Runecraft",
+		position = 21,
+		section = skills
+	)
+	default boolean trackRunecraft()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Hunter",
+		keyName = "trackHunter",
+		description = "Track Hunter",
+		position = 22,
+		section = skills
+	)
+	default boolean trackHunter()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Construction",
+		keyName = "trackConstruction",
+		description = "Track Construction",
+		position = 23,
+		section = skills
+	)
+	default boolean trackConstruction()
+	{
+		return true;
+	}
+	
+	@ConfigSection(
 		name = "Display",
 		description = "Display settings",
-		position = 2
+		position = 3
 	)
 	String display = "display";
 
@@ -181,7 +465,7 @@ public interface XPMeterConfig extends Config
 	@ConfigSection(
 		name = "Interactivity",
 		description = "Interactivity settings",
-		position = 3
+		position = 4
 	)
 	String interactivity = "interactivity";
 
@@ -236,7 +520,7 @@ public interface XPMeterConfig extends Config
 	@ConfigSection(
 		name = "Debugging",
 		description = "Developer tools for debugging",
-		position = 4,
+		position = 99,
 		closedByDefault = true
 	)
 	String debugging = "debugging";

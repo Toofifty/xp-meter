@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 
@@ -43,6 +44,8 @@ public class XPTracker
 	@Expose @Getter private final Set<Integer> logouts = new HashSet<>();
 
 	// transient
+	@Setter private Set<Skill> enabledSkills;
+
 	private final Map<Integer, Integer> cache = new HashMap<>();
 	@Getter private List<Skill> sortedSkills;
 	@Getter private int maxXpPerHour;
@@ -84,7 +87,9 @@ public class XPTracker
 
 	public Set<Skill> getTrackedSkills()
 	{
-		return xpGained.keySet();
+		return xpGained.keySet().stream()
+			.filter(skill -> enabledSkills.contains(skill))
+			.collect(Collectors.toSet());
 	}
 
 	public int getXPPerHourAt(Skill skill, int tick, int windowInterval, TrackingMode trackingMode)

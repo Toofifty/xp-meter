@@ -3,10 +3,12 @@ package com.toofifty.xpmeter;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import static com.toofifty.xpmeter.Util.secondsToTicks;
+import java.util.HashSet;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.KeyCode;
+import net.runelite.api.Skill;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptCallbackEvent;
@@ -169,6 +171,24 @@ public class XPMeterPlugin extends Plugin
 			|| "trackingMode".equals(changedKey))
 		{
 			tracker.clearCache();
+		}
+
+		if (changedKey == null || changedKey.startsWith("track"))
+		{
+			final var enabledSkills = new HashSet<Skill>();
+			for (var skill : Skill.values())
+			{
+				final var enabled = configManager.<Boolean>getConfiguration(
+					XPMeterConfig.GROUP_NAME,
+					"track" + skill.getName(),
+					boolean.class
+				);
+				if (enabled)
+				{
+					enabledSkills.add(skill);
+				}
+			}
+			tracker.setEnabledSkills(enabledSkills);
 		}
 
 		if ("span".equals(changedKey))
