@@ -296,13 +296,21 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		setColor(PAUSE_MARKER_COLOR);
 		for (var tick : pauses)
 		{
-			drawVMarker(mapX(tick));
+			final var x = mapX(tick);
+			if (x >= 0)
+			{
+				drawVMarker(x);
+			}
 		}
 
 		setColor(LOGOUT_MARKER_COLOR);
 		for (var tick : logouts)
 		{
-			drawVMarker(mapX(tick));
+			final var x = mapX(tick);
+			if (x >= 0)
+			{
+				drawVMarker(x);
+			}
 		}
 	}
 
