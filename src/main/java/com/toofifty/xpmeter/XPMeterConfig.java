@@ -342,7 +342,7 @@ public interface XPMeterConfig extends Config
 	{
 		return true;
 	}
-	
+
 	@ConfigSection(
 		name = "Display",
 		description = "Display settings",
@@ -529,7 +529,7 @@ public interface XPMeterConfig extends Config
 		name = "Show performance",
 		keyName = "showPerformance",
 		description = "Show debugging performance metrics like compute time / cache info",
-		section = display,
+		section = debugging,
 		position = 1
 	)
 	default boolean showPerformance()
