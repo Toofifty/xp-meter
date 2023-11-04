@@ -311,12 +311,13 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			return;
 		}
 
-		final var time = performance.getComputeTime() == 0 ? "<0" : "" + performance.getComputeTime();
+		final var time = performance.getComputeTime() == 0 ? "<1" : "" + performance.getComputeTime();
 
 		final var text = time + "ms "
 			+ "Cached: " + performance.getCacheSize() + " "
 			+ "Hits: " + performance.getCacheHits() + " "
-			+ "Misses: " + performance.getCacheMisses();
+			+ "Misses: " + performance.getCacheMisses() + " "
+			+ "Resolution: " + performance.getRenderedResolution() + "s ";
 
 		final var y = size.height + fontHeight + TIME_LABEL_TPAD + (showTimeLabels ? fontHeight + TIME_LABEL_TPAD : 0);
 

@@ -183,7 +183,7 @@ public class XPMeterPlugin extends Plugin
 	{
 		final var chart = overlay.getChart();
 
-		chart.setSkillXpHistories(tracker.getAggregate());
+		chart.setSkillXpHistories(tracker.getAggregate(chart.getBounds().width));
 		chart.setSortedSkills(tracker.getSortedSkills());
 		chart.setMaxXpPerHour(tracker.getMaxXpPerHour());
 		chart.setCurrentTick(tracker.getCurrentTick());

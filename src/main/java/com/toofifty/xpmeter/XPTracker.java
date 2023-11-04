@@ -129,7 +129,7 @@ public class XPTracker
 		final var startTick = Math.max(currentTick - secondsToTicks(config.span()), 0);
 		final var windowInterval = config.windowInterval();
 		final var trackingMode = config.trackingMode();
-		for (int t = startTick; t < currentTick; t += resolution)
+		for (int t = startTick; t < currentTick; t += secondsToTicks(resolution))
 		{
 			history.add(new Point(t, getXPPerHourAt(skill, t, windowInterval, trackingMode)));
 		}
@@ -137,22 +137,22 @@ public class XPTracker
 		return history;
 	}
 
-	public Map<Skill, List<Point>> getAggregate()
+	public Map<Skill, List<Point>> getAggregate(int maxPixels)
 	{
 		cacheHits = 0;
 		cacheMisses = 0;
 		final var start = Instant.now();
 
 		maxXpPerHour = 0;
-		final var resolution = config.resolution();
+		final var pixelResolution = config.disableDynamicResolution()
+			? 1
+			: config.span() / maxPixels;
+		final var resolution = Math.max(config.resolution(), pixelResolution);
 		final var skillHistories = new HashMap<Skill, List<Point>>();
 		final var skillCurrentRates = new HashMap<Skill, Integer>();
 		for (var skill : getTrackedSkills())
 		{
-			final var history = getHistory(
-				skill,
-				Math.max(resolution, 1)
-			);
+			final var history = getHistory(skill, resolution);
 			skillHistories.put(skill, history);
 
 			final var last = history.get(history.size() - 1);
@@ -173,7 +173,7 @@ public class XPTracker
 			.collect(Collectors.toList());
 
 		final var time = Duration.between(start, Instant.now()).toMillis();
-		performance = new Performance(time, cache.size(), cacheHits, cacheMisses);
+		performance = new Performance(time, cache.size(), cacheHits, cacheMisses, resolution);
 
 		return skillHistories;
 	}
@@ -279,5 +279,6 @@ public class XPTracker
 		private int cacheSize;
 		private int cacheHits;
 		private int cacheMisses;
+		private int renderedResolution;
 	}
 }

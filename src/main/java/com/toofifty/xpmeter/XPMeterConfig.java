@@ -266,11 +266,23 @@ public interface XPMeterConfig extends Config
 	}
 
 	@ConfigItem(
+		name = "Disable dynamic resolution",
+		keyName = "disableDynamicResolution",
+		description = "Disables resolution dynamically scaling to the width of the chart.",
+		section = debugging,
+		position = 3
+	)
+	default boolean disableDynamicResolution()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		name = "Enable data import/export",
 		keyName = "enableDataMenuOptions",
 		description = "Enables data import and export tool options when shift + right-clicking the overlay",
 		section = debugging,
-		position = 3
+		position = 4
 	)
 	default boolean enableDataMenuOptions()
 	{
@@ -282,7 +294,7 @@ public interface XPMeterConfig extends Config
 		keyName = "sessionData",
 		description = "Result of the last data export",
 		section = debugging,
-		position = 4
+		position = 5
 	)
 	default String sessionData()
 	{
