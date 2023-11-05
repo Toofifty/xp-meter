@@ -1,6 +1,6 @@
 package com.toofifty.xpmeter;
 
-import com.google.gson.GsonBuilder;
+import com.google.gson.Gson;
 import com.google.gson.JsonParser;
 import com.google.gson.annotations.Expose;
 import com.google.inject.Inject;
@@ -32,6 +32,7 @@ public class XPTracker
 	private static final int ONE_HOUR = 60 * ONE_MINUTE;
 
 	@Inject private XPMeterConfig config;
+	@Inject private Gson gson;
 
 	// data
 	@Expose private final Map<Skill, List<XPGain>> xpGained = new HashMap<>();
@@ -221,7 +222,7 @@ public class XPTracker
 
 	public String export()
 	{
-		return new GsonBuilder()
+		return gson.newBuilder()
 			.excludeFieldsWithoutExposeAnnotation()
 			.create()
 			.toJson(this);
