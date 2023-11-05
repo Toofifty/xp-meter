@@ -207,6 +207,13 @@ public class XPMeterPlugin extends Plugin
 				}
 			}
 			tracker.setEnabledSkills(enabledSkills);
+
+			if (changedKey != null)
+			{
+				// immediately show changes in skill filtering in
+				// the chart
+				update();
+			}
 		}
 
 		if ("span".equals(changedKey))
