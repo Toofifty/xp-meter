@@ -2,11 +2,11 @@ package com.toofifty.xpmeter;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import lombok.Getter;
-import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.client.game.SkillIconManager;
@@ -26,8 +26,6 @@ public class XPMeterOverlay extends OverlayPanel
 	@Getter private final XPChart chart = new XPChart();
 	@Getter private boolean isMouseOver = false;
 
-	@Setter private Theme theme = Theme.RUNELITE;
-
 	@Inject
 	private XPMeterOverlay(SkillIconManager skillIconManager, XPMeterConfig config)
 	{
@@ -38,7 +36,6 @@ public class XPMeterOverlay extends OverlayPanel
 
 		setPosition(OverlayPosition.TOP_LEFT);
 		setMinimumSize(XPChart.MIN_WIDTH);
-		setResizable(true);
 		setResettable(true);
 
 		chart.setSkillIconManager(skillIconManager);
@@ -87,6 +84,11 @@ public class XPMeterOverlay extends OverlayPanel
 		}
 	}
 
+	public void setBackgroundColor(Color color)
+	{
+		setPreferredColor(color);
+	}
+
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
@@ -102,8 +104,6 @@ public class XPMeterOverlay extends OverlayPanel
 					.build()
 			);
 		}
-
-		setPreferredColor(theme.overlayBackground);
 
 		// onMouseOver() is called each frame immediately after render,
 		// so we can flick off the value for it to be re-set immediately

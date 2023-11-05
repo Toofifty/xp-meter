@@ -14,6 +14,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.OverlayMenuClicked;
@@ -31,6 +32,7 @@ public class XPMeterPlugin extends Plugin
 	@Inject private Client client;
 	@Inject private OverlayManager overlayManager;
 	@Inject private ConfigManager configManager;
+	@Inject private RuneLiteConfig runeLiteConfig;
 
 	@Inject private XPMeterConfig config;
 	@Inject private XPTracker tracker;
@@ -101,6 +103,15 @@ public class XPMeterPlugin extends Plugin
 				overlay.updateMenuEntries(config.enableDataMenuOptions());
 			}
 		}
+
+		// listen to changes in runelite config's overlay color,
+		// since setting the overlay color to "null" causes it to
+		// become out of sync with the runelite setting
+		if (event.getGroup().equals(RuneLiteConfig.GROUP_NAME)
+			&& event.getKey().equals("overlayBackgroundColor"))
+		{
+			syncConfig(null);
+		}
 	}
 
 	@Subscribe
@@ -167,7 +178,11 @@ public class XPMeterPlugin extends Plugin
 		chart.setDimNonHoveredSkills(config.dimNonHoveredSkills());
 		chart.setShowAllHovers(config.showAllHovers());
 
-		overlay.setTheme(config.theme());
+		overlay.setBackgroundColor(
+			config.theme().overlayBackground != null
+				? config.theme().overlayBackground
+				: runeLiteConfig.overlayBackgroundColor()
+		);
 		chart.setTheme(config.theme());
 
 		if ("windowInterval".equals(changedKey)
