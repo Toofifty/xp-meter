@@ -37,6 +37,12 @@ Controls how frequently the chart is updated, and how far apart data points are.
 
 ![Resolution](docs/resolution.gif)
 
+### Skills
+
+Select skills to display in the chart. All skills will still be tracked, so toggling a skill off won't lose any data.
+
+![Skill filters](docs/skill-filters.gif)
+
 ### Display
 
 #### Span
@@ -61,6 +67,12 @@ Controls display of axis labels and markers in the chart
 
 Show current XP rates at the end of each line
 
+#### Stack rates
+
+Prevent rates from overlapping
+
+![Stack rates](docs/stack-rates.gif)
+
 #### Display skill icons
 
 Show mini skill icons at the end of each line
@@ -69,14 +81,13 @@ Show mini skill icons at the end of each line
 
 Show all rates in a longer format. e.g. `69,420` instead of `69K`, or `1,200K` instead of `1M`
 
-#### Show performance
+#### Theme
 
-Show debugging performance metrics like compute time / cache info.
+Change the appearance of the overlay
 
-Performance can deteriorate over long sessions, potentially to the point that it causes hitches on each chart update. If this happens, either:
-- Zoom in / reduce span
-- Increase the resolution
-- Reset the chart
+`Runelite` will use the global overlay color, specified in `RuneLite` > `Overlay color`
+
+![Theme](docs/theme.gif)
 
 ### Interactivity
 
@@ -103,3 +114,28 @@ Toggle between showing 1 or all skills when hovering over the chart
 Hold `shift` + `scroll` over the overlay to adjust the display span
 
 ![Scroll to zoom](docs/scroll-zoom.gif)
+
+### Debugging
+
+This section contains tools used for debugging. Changing these values can decrease your game FPS significantly.
+
+#### Show performance
+
+Show debugging performance metrics like compute time / cache info.
+
+Performance can deteriorate over long sessions, potentially to the point that it causes hitches on each chart update. If this happens, either:
+- Zoom in / reduce span
+- Increase the resolution
+- Reset the chart
+
+#### Disable cache
+
+Disables caching computed values. Not using the cache will have a large performance impact (large freezes every game tick).
+
+#### Disable dynamic resolution
+
+Disables resolution dynamically scaling to the width of the chart. Not using this will drop your FPS significantly in longer sessions.
+
+#### Enable data import/export
+
+Enables data import and export tool options when shift + right-clicking the overlay.
