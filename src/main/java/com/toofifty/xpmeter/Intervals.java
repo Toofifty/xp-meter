@@ -27,11 +27,15 @@ public class Intervals
 		{
 			interval = 25_000;
 		}
-		else if (max < 250_000)
+		else if (max < 200_000)
+		{
+			interval = 50_000;
+		}
+		else if (max < 500_000)
 		{
 			interval = 100_000;
 		}
-		else if (max < 500_000)
+		else if (max < 1_000_000)
 		{
 			interval = 250_000;
 		}

@@ -439,11 +439,23 @@ public interface XPMeterConfig extends Config
 	}
 
 	@ConfigItem(
+		name = "Stack rates",
+		keyName = "stackCurrentRates",
+		description = "Prevent rates from overlapping",
+		section = display,
+		position = 8
+	)
+	default boolean stackCurrentRates()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		name = "Display skill icons",
 		keyName = "showSkillIcons",
 		description = "Show mini skill icons at the end of each line",
 		section = display,
-		position = 8
+		position = 9
 	)
 	default boolean showSkillIcons()
 	{
@@ -455,11 +467,23 @@ public interface XPMeterConfig extends Config
 		keyName = "longFormatNumbers",
 		description = "Show all rates in a longer format. e.g. 69,420 instead of 69K, or 1,200K instead of 1M",
 		section = display,
-		position = 9
+		position = 10
 	)
 	default boolean longFormatNumbers()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		name = "Theme",
+		keyName = "theme",
+		description = "Change the appearance of the overlay",
+		section = display,
+		position = 11
+	)
+	default Theme theme()
+	{
+		return Theme.RUNELITE;
 	}
 
 	@ConfigSection(

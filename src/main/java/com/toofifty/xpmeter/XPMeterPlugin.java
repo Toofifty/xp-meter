@@ -152,7 +152,6 @@ public class XPMeterPlugin extends Plugin
 	{
 		final var chart = overlay.getChart();
 
-		chart.setResolution(secondsToTicks(config.resolution()));
 		chart.setSpan(secondsToTicks(config.span()));
 		chart.setChartHeight(config.chartHeight());
 		chart.setShowTimeLabels(config.showTimeLabels());
@@ -160,12 +159,16 @@ public class XPMeterPlugin extends Plugin
 		chart.setShowXpLabels(config.showXpLabels());
 		chart.setShowXpMarkers(config.showXpMarkers());
 		chart.setShowCurrentRates(config.showCurrentRates());
+		chart.setStackCurrentRates(config.stackCurrentRates());
 		chart.setShowSkillIcons(config.showSkillIcons());
 		chart.setLongFormatNumbers(config.longFormatNumbers());
 		chart.setShowPerformance(config.showPerformance());
 		chart.setShowHoverTooltips(config.showHoverTooltips());
 		chart.setDimNonHoveredSkills(config.dimNonHoveredSkills());
 		chart.setShowAllHovers(config.showAllHovers());
+
+		overlay.setTheme(config.theme());
+		chart.setTheme(config.theme());
 
 		if ("windowInterval".equals(changedKey)
 			|| "trackingMode".equals(changedKey))

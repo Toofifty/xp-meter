@@ -29,22 +29,13 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final int TIME_LABEL_SPACING = 4;
 	private static final int XP_LABEL_RPAD = 2;
 	private static final int CURR_RATE_LPAD = 4;
+	private static final int STACKED_RATE_GAP = 3;
 
 	private static final int XP_TOOLTIP_LPAD = 8;
 
-	private static final Color XP_LABEL_COLOR = new Color(255, 255, 255, 128);
-	private static final Color XP_MARKER_COLOR = new Color(0, 0, 0, 32);
-	private static final Color TIME_LABEL_COLOR = new Color(255, 255, 255, 128);
-	private static final Color TIME_MARKER_COLOR = new Color(255, 255, 255, 32);
-
 	private static final Color PAUSE_MARKER_COLOR = new Color(0, 166, 255, 128);
 	private static final Color LOGOUT_MARKER_COLOR = new Color(255, 68, 0, 128);
-
 	private static final Color CURSOR_MARKER_COLOR = new Color(255, 255, 255, 128);
-
-	private static final Color BACKGROUND_COLOR = new Color(0, 0, 0, 32);
-	private static final Color RATE_BACKGROUND_COLOR = new Color(0, 0, 0, 64);
-	private static final Color TOOLTIP_BACKGROUND_COLOR = new Color(0, 0, 0, 128);
 
 	@Setter private SkillIconManager skillIconManager;
 
@@ -68,19 +59,20 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	// configs
 
 	@Setter private int span = secondsToTicks(180);
-	@Setter private int resolution = 1;
 	@Setter private int chartHeight = 60;
 	@Setter private boolean showTimeLabels = true;
 	@Setter private boolean showTimeMarkers = true;
 	@Setter private boolean showXpLabels = true;
 	@Setter private boolean showXpMarkers = true;
 	@Setter private boolean showCurrentRates = true;
+	@Setter private boolean stackCurrentRates = false;
 	@Setter private boolean showSkillIcons = true;
 	@Setter private boolean longFormatNumbers = false;
 	@Setter private boolean showPerformance = false;
 	@Setter private boolean showHoverTooltips = true;
 	@Setter private boolean dimNonHoveredSkills = true;
 	@Setter private boolean showAllHovers = false;
+	@Setter private Theme theme = Theme.RUNELITE;
 
 	// local data
 
@@ -113,8 +105,10 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		setWidthMax(currentTick);
 
 		// background
-		setColor(BACKGROUND_COLOR);
+		setColor(theme.chartBackground);
 		fillRect(0, 0, size.width, size.height);
+		setColor(theme.chartBorder);
+		drawRect(0, 0, size.width, size.height);
 
 		drawXpLabels();
 		drawTimeLabels();
@@ -134,7 +128,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		if (showXpLabels)
 		{
 			var lastY = 0;
-			setColor(XP_LABEL_COLOR);
+			setColor(theme.axisLabelColor);
 			// reverse so topmost labels have priority
 			for (var xp : Lists.reverse(xpIntervals))
 			{
@@ -148,7 +142,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				// do not draw overlapping xps
 				if (y - fontHeight > lastY)
 				{
-					drawText(label, x, y);
+					drawText(label, x, y, theme.axisLabelShadow);
 					lastY = y;
 				}
 			}
@@ -156,7 +150,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 		if (showXpMarkers)
 		{
-			setColor(XP_MARKER_COLOR);
+			setColor(theme.horizonalMarkerColor);
 			for (var xp : xpIntervals)
 			{
 				drawHMarker(mapY(xp, true));
@@ -180,13 +174,13 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 		if (showTimeLabels)
 		{
-			setColor(TIME_LABEL_COLOR);
+			setColor(theme.axisLabelColor);
 			{
 				final var time = ticksToTime(origin);
 				final var width = width(time);
 				final var x = mapX(origin) - width / 2;
 
-				drawText(time, x, y);
+				drawText(time, x, y, theme.axisLabelShadow);
 
 				originX = x + width + TIME_LABEL_SPACING;
 			}
@@ -203,7 +197,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				// (either on next time to the right, or origin)
 				if (x + width < lastX && x > originX)
 				{
-					drawText(time, x, y);
+					drawText(time, x, y, theme.axisLabelShadow);
 
 					lastX = x - TIME_LABEL_SPACING;
 				}
@@ -212,7 +206,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 		if (showTimeMarkers)
 		{
-			setColor(TIME_MARKER_COLOR);
+			setColor(theme.verticalMarkerColor);
 			for (var timeTick : timeIntervals)
 			{
 				drawVMarker(mapX(timeTick));
@@ -229,6 +223,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 		final var baseX = size.width + CURR_RATE_LPAD;
 
+		var lastY = size.height;
 		for (var skill : sortedSkills)
 		{
 			final var skillColor = getSkillColor(skill);
@@ -238,21 +233,58 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			if (last != null && last.getY() != 0)
 			{
 				final var rate = format(last.y);
-				final var y = mapY(last.y, true);
+				var y = mapY(last.y, true);
 				var x = baseX;
+
+				final var boxHeight = fontHeight + 2;
+
+				// do not allow any rates to render under the chart
+				if (y + boxHeight / 2 + STACKED_RATE_GAP > lastY)
+				{
+					// -3 to add a small gap
+					y = lastY - boxHeight / 2 - STACKED_RATE_GAP;
+				}
+
+				if (stackCurrentRates && !showSkillIcons)
+				{
+					lastY = y - fontHeight / 2;
+				}
 
 				if (showSkillIcons)
 				{
 					final var icon = skillIconManager.getSkillImage(skill, true);
+
+					if (y + icon.getHeight() / 2 > lastY)
+					{
+						y = lastY - icon.getHeight() / 2;
+					}
+
+					if (stackCurrentRates)
+					{
+						lastY = y - icon.getHeight() / 2;
+					}
+
 					x += icon.getWidth() + CURR_RATE_LPAD;
 					drawImage(icon, baseX, y - icon.getHeight() / 2);
 				}
 
 				if (showCurrentRates)
 				{
-					setColor(RATE_BACKGROUND_COLOR);
-					fillRoundRect(x - 1, y - fontHeight / 2 - 1, width(rate) + 2, fontHeight + 2, 2);
-					setColor(skillColor);
+					if (theme.rateBorder != null)
+					{
+						setColor(theme.rateBackground);
+						fillRect(x - 2, y - boxHeight / 2, width(rate) + 4, boxHeight);
+						setColor(theme.rateBorder);
+						drawRect(x - 2, y - boxHeight / 2, width(rate) + 4, boxHeight);
+						setColor(theme.rateTextColor);
+					}
+					else
+					{
+						setColor(theme.rateBackground);
+						fillRoundRect(x - 1, y - boxHeight / 2, width(rate) + 2, boxHeight, 2);
+						setColor(skillColor);
+					}
+
 					drawText(rate, x, y + fontHeight / 2, true);
 				}
 			}
@@ -277,7 +309,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				if (prev != null && !isFlatlining)
 				{
-					drawLine(prev.x, prev.y, x, y, true);
+					drawLine(prev.x, prev.y, x, y, theme.plotShadow);
 				}
 
 				prev = new Point(x, y);
@@ -286,7 +318,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			// draw to end of chart
 			if (prev != null && !isFlatlining)
 			{
-				drawLine(prev.x, prev.y, size.width, prev.y, true);
+				drawLine(prev.x, prev.y, size.width, prev.y, theme.plotShadow);
 			}
 		}
 	}
@@ -345,7 +377,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		}
 		else
 		{
-			setColor(TIME_LABEL_COLOR);
+			setColor(theme.axisLabelColor);
 		}
 
 		drawText(text, 0, y, true);
@@ -412,10 +444,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				final var label = skill.getName() + ": " + format(closest.y) + "/hr";
 
-				setColor(TOOLTIP_BACKGROUND_COLOR);
-				fillRoundRect(x - 1, y - fontHeight / 2 - 1, width(label) + 2, fontHeight + 2, 2);
-				setColor(getSkillColor(skill));
-				drawText(label, x, y + fontHeight / 2, true);
+				drawThemedTooltip(theme, x, y, label, getSkillColor(skill));
 			}
 		}
 
@@ -425,10 +454,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		{
 			final var label = closestSkill.getName() + ": " + format(closestXp) + "/hr";
 
-			setColor(TOOLTIP_BACKGROUND_COLOR);
-			fillRoundRect(x - 1, closestY - fontHeight / 2 - 1, width(label) + 2, fontHeight + 2, 2);
-			setColor(getSkillColor(closestSkill));
-			drawText(label, x, closestY + fontHeight / 2, true);
+			drawThemedTooltip(theme, x, closestY, label, getSkillColor(closestSkill));
 		}
 	}
 
@@ -501,7 +527,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				}
 
 				final var text = format(last.y);
-				final var width = (showCurrentRates ? width(text) + CURR_RATE_LPAD : 0)
+				final var width = (showCurrentRates ? width(text) + CURR_RATE_LPAD + 2 : 0)
 					+ (showSkillIcons ? SKILL_ICON_WIDTH + CURR_RATE_LPAD : 0);
 
 				if (width > currentRateWidth)
