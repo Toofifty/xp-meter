@@ -106,6 +106,11 @@ public abstract class XPChartBase implements LayoutableRenderableEntity
 		graphics.drawRect(offset.x + x, offset.y + y, w, h);
 	}
 
+	protected void drawRoundRect(int x, int y, int w, int h, int arc)
+	{
+		graphics.drawRoundRect(offset.x + x, offset.y + y, w, h, arc, arc);
+	}
+
 	protected void fillRect(int x, int y, int w, int h)
 	{
 		graphics.fillRect(offset.x + x, offset.y + y, w, h);
@@ -136,10 +141,10 @@ public abstract class XPChartBase implements LayoutableRenderableEntity
 		if (theme.tooltipBorder != null)
 		{
 			setColor(theme.tooltipBackground);
-			// extra height to avoid clipping g/y
-			fillRect(x - 1, y - fontHeight / 2 - 1, width(label) + 2, fontHeight + 4);
+			// extra height to avoid clipping gs and ys
+			fillRect(x - 1, y - fontHeight / 2 - 1, width(label) + 2, fontHeight + 3);
 			setColor(theme.tooltipBorder);
-			drawRect(x - 1, y - fontHeight / 2 - 1, width(label) + 2, fontHeight + 4);
+			drawRect(x - 1, y - fontHeight / 2 - 1, width(label) + 2, fontHeight + 3);
 			setColor(theme.tooltipTextColor);
 		}
 		else

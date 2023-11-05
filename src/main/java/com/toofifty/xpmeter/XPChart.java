@@ -28,7 +28,6 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final int TIME_LABEL_TPAD = 2;
 	private static final int TIME_LABEL_SPACING = 4;
 	private static final int XP_LABEL_RPAD = 2;
-	private static final int CURR_RATE_LPAD = 4;
 	private static final int STACKED_RATE_GAP = 3;
 
 	private static final int XP_TOOLTIP_LPAD = 8;
@@ -221,7 +220,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			return;
 		}
 
-		final var baseX = size.width + CURR_RATE_LPAD;
+		final var baseX = size.width + theme.rateMargin;
 
 		var lastY = size.height;
 		for (var skill : sortedSkills)
@@ -241,7 +240,6 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				// do not allow any rates to render under the chart
 				if (y + boxHeight / 2 + STACKED_RATE_GAP > lastY)
 				{
-					// -3 to add a small gap
 					y = lastY - boxHeight / 2 - STACKED_RATE_GAP;
 				}
 
@@ -264,24 +262,53 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 						lastY = y - icon.getHeight() / 2;
 					}
 
-					x += icon.getWidth() + CURR_RATE_LPAD;
+					x += icon.getWidth() + theme.rateMargin;
 					drawImage(icon, baseX, y - icon.getHeight() / 2);
 				}
 
 				if (showCurrentRates)
 				{
-					if (theme.rateBorder != null)
+					final var padding = theme.ratePadding;
+					x += padding;
+
+					if (theme.rateOuterBorder != null)
 					{
 						setColor(theme.rateBackground);
-						fillRect(x - 2, y - boxHeight / 2, width(rate) + 4, boxHeight);
-						setColor(theme.rateBorder);
-						drawRect(x - 2, y - boxHeight / 2, width(rate) + 4, boxHeight);
+						fillRoundRect(
+							x - padding,
+							y - boxHeight / 2,
+							width(rate) + padding * 2,
+							boxHeight,
+							4
+						);
+						setColor(theme.rateInnerBorder);
+						drawRoundRect(
+							x - padding,
+							y - boxHeight / 2,
+							width(rate) + padding * 2,
+							boxHeight,
+							4
+						);
+						setColor(theme.rateOuterBorder);
+						drawRoundRect(
+							x - padding - 1,
+							y - boxHeight / 2 - 1,
+							width(rate) + padding * 2 + 2,
+							boxHeight + 2,
+							5
+						);
 						setColor(theme.rateTextColor);
 					}
 					else
 					{
 						setColor(theme.rateBackground);
-						fillRoundRect(x - 1, y - boxHeight / 2, width(rate) + 2, boxHeight, 2);
+						fillRoundRect(
+							x - padding,
+							y - boxHeight / 2,
+							width(rate) + padding * 2,
+							boxHeight,
+							2
+						);
 						setColor(skillColor);
 					}
 
@@ -527,8 +554,17 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				}
 
 				final var text = format(last.y);
-				final var width = (showCurrentRates ? width(text) + CURR_RATE_LPAD + 2 : 0)
-					+ (showSkillIcons ? SKILL_ICON_WIDTH + CURR_RATE_LPAD : 0);
+				var width = 0;
+
+				if (showCurrentRates)
+				{
+					width += width(text) + theme.ratePadding * 2 + theme.rateMargin * 2;
+				}
+
+				if (showSkillIcons)
+				{
+					width += SKILL_ICON_WIDTH + theme.rateMargin;
+				}
 
 				if (width > currentRateWidth)
 				{
