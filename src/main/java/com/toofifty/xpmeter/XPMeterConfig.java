@@ -343,7 +343,6 @@ public interface XPMeterConfig extends Config
 		return true;
 	}
 
-
 	@ConfigItem(
 			name = "Sailing",
 			keyName = "trackSailing",
