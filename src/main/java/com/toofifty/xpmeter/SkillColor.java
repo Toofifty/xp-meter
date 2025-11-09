@@ -31,7 +31,8 @@ public enum SkillColor
 	FARMING(new Color(57, 89, 45)),
 	RUNECRAFT(new Color(178, 178, 168)),
 	HUNTER(new Color(128, 124, 103)),
-	CONSTRUCTION(new Color(169, 159, 138));
+	CONSTRUCTION(new Color(169, 159, 138)),
+	SAILING(new Color(0, 71, 255));
 
 	private final Color color;
 
