@@ -343,6 +343,18 @@ public interface XPMeterConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+			name = "Sailing",
+			keyName = "trackSailing",
+			description = "Track Sailing",
+			position = 24,
+			section = skills
+	)
+	default boolean trackSailing()
+	{
+		return true;
+	}
+
 	@ConfigSection(
 		name = "Display",
 		description = "Display settings",
