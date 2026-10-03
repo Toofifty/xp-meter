@@ -23,12 +23,17 @@ public class XPMeterOverlay extends OverlayPanel
 	@Inject private XPTracker tracker;
 	@Inject private Client client;
 
-	@Getter private final XPChart chart = new XPChart();
+	@Getter private final XPChart chart;
 	@Getter private boolean isMouseOver = false;
 
 	@Inject
-	private XPMeterOverlay(SkillIconManager skillIconManager, XPMeterConfig config)
+	private XPMeterOverlay(
+		SkillIconManager skillIconManager,
+		XPMeterConfig config,
+		XPChart chart
+	)
 	{
+		this.chart = chart;
 		if (getPreferredSize() == null)
 		{
 			setPreferredSize(new Dimension(DEFAULT_WIDTH, DEFAULT_HEIGHT));
@@ -94,6 +99,7 @@ public class XPMeterOverlay extends OverlayPanel
 	{
 		if (chart.hasData())
 		{
+			chart.setScreenY(getBounds().y);
 			panelComponent.getChildren().add(chart);
 		}
 		else

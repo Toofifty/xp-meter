@@ -24,9 +24,18 @@ dependencies {
 }
 
 group = 'com.toofifty'
-version = '1.1.1'
+version = '1.2.0'
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
     options.release.set(11)
+}
+
+def pluginMainClass = 'com.xpmeter.XPMeterPluginTest'
+
+tasks.register('run', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = pluginMainClass
+    jvmArgs "-ea"
+    args "--developer-mode", "--debug"
 }
