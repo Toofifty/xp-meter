@@ -13,6 +13,7 @@ import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
+import net.runelite.client.config.ConfigManager;
 
 @Singleton
 public class XPMeterOverlay extends OverlayPanel
@@ -22,13 +23,23 @@ public class XPMeterOverlay extends OverlayPanel
 
 	@Inject private XPTracker tracker;
 	@Inject private Client client;
+	@Inject private ConfigManager configManager;
 
-	@Getter private final XPChart chart = new XPChart();
+	@Getter private final XPChart chart;
 	@Getter private boolean isMouseOver = false;
 
+	private XPMeterConfig config;
+	private boolean initialized = false;
+
 	@Inject
-	private XPMeterOverlay(SkillIconManager skillIconManager, XPMeterConfig config)
+	private XPMeterOverlay(
+		SkillIconManager skillIconManager,
+		XPMeterConfig config,
+		XPChart chart
+	)
 	{
+		this.config = config;
+		this.chart = chart;
 		if (getPreferredSize() == null)
 		{
 			setPreferredSize(new Dimension(DEFAULT_WIDTH, DEFAULT_HEIGHT));
@@ -48,6 +59,7 @@ public class XPMeterOverlay extends OverlayPanel
 		);
 
 		updateMenuEntries(config.enableDataMenuOptions());
+		initialized = true;
 	}
 
 	public void updateMenuEntries(boolean enableDataMenuOptions)
@@ -89,26 +101,61 @@ public class XPMeterOverlay extends OverlayPanel
 		setPreferredColor(color);
 	}
 
+	private void updateMouse()
+	{
+		final var bounds = getBounds();
+		final var canvas = client.getMouseCanvasPosition();
+		isMouseOver = bounds.contains(canvas.getX(), canvas.getY());
+		final var mouse = new Point(
+			canvas.getX() - bounds.x,
+			canvas.getY() - bounds.y
+		);
+		chart.setMouse(mouse);
+	}
+
+	@Override
+	public void setPreferredSize(Dimension size)
+	{
+		super.setPreferredSize(size);
+
+		if (initialized)
+		{
+			configManager.setConfiguration(
+				XPMeterConfig.GROUP_NAME,
+				"chartHeight",
+				Math.max(size.height, DEFAULT_HEIGHT)
+			);
+		}
+		
+	}
+
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
 		if (chart.hasData())
 		{
+			chart.setScreenY(getBounds().y);
+			chart.setChartHeight(config.chartHeight());
 			panelComponent.getChildren().add(chart);
 		}
 		else
 		{
-			panelComponent.getChildren().add(
+			if (config.hideNoXP())
+			{
+				isMouseOver = false;
+				return new Dimension(0, 0);
+			}
+			else
+			{
+				panelComponent.getChildren().add(
 				LineComponent.builder()
 					.left("XP Meter inactive")
 					.build()
-			);
+				);
+			}
 		}
 
-		// onMouseOver() is called each frame immediately after render,
-		// so we can flick off the value for it to be re-set immediately
-		// (if mouse is hovering)
-		isMouseOver = false;
+		updateMouse();
 
 		return super.render(graphics);
 	}
@@ -116,15 +163,6 @@ public class XPMeterOverlay extends OverlayPanel
 	@Override
 	public void onMouseOver()
 	{
-		isMouseOver = true;
-
-		final var bounds = getBounds();
-		final var canvas = client.getMouseCanvasPosition();
-		final var mouse = new Point(
-			canvas.getX() - bounds.x,
-			canvas.getY() - bounds.y
-		);
-
-		chart.setMouse(mouse);
+		updateMouse();
 	}
 }

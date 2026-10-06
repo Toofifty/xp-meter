@@ -1,6 +1,7 @@
 package com.toofifty.xpmeter;
 
 import com.google.common.collect.Lists;
+import com.google.inject.Inject;
 import static com.toofifty.xpmeter.Util.secondsToTicks;
 import static com.toofifty.xpmeter.Util.shortFormat;
 import static com.toofifty.xpmeter.Util.ticksToTime;
@@ -14,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Setter;
+import net.runelite.api.Client;
+import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
@@ -28,7 +31,8 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final int TIME_LABEL_TPAD = 2;
 	private static final int TIME_LABEL_SPACING = 4;
 	private static final int XP_LABEL_RPAD = 2;
-	private static final int STACKED_RATE_GAP = 3;
+	private static final int STACKED_RATE_GAP = 5;
+	private static final int PROGRESS_BAR_HEIGHT = 2;
 
 	private static final int XP_TOOLTIP_LPAD = 8;
 
@@ -71,11 +75,24 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	@Setter private boolean showHoverTooltips = true;
 	@Setter private boolean dimNonHoveredSkills = true;
 	@Setter private boolean showAllHovers = false;
+	@Setter private boolean showLevelProgressBars = true;
 	@Setter private Theme theme = Theme.RUNELITE;
 
 	// local data
-
+	private final Client client;
+	private final int significantRightMarginChangePositive = 4;
+	private final int significantRightMarginChangeNegative = -16;
+	private int screenY;
 	private Skill hoveredSkill = null;
+	private int lastRightMarginWidth = 0;
+
+	
+
+	@Inject
+	public XPChart(Client client)
+	{
+		this.client = client;
+	}
 
 	public boolean hasData()
 	{
@@ -213,6 +230,15 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		}
 	}
 
+	// Based on chart location in client, determine stack direction.
+	private boolean shouldStackUp()
+	{
+		final var chartCenterY = screenY + size.height / 2;
+		final var screenCenterY = client.getCanvasHeight() / 2;
+
+		return chartCenterY > screenCenterY;
+	}
+
 	private void drawCurrentRates()
 	{
 		if (!showCurrentRates && !showSkillIcons)
@@ -221,10 +247,14 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		}
 
 		final var baseX = size.width + theme.rateMargin;
+		final var stackUp = shouldStackUp();
 
-		var lastY = size.height;
-		for (var skill : sortedSkills)
+		var lastY = stackUp ? size.height : 0;
+		for (var i = stackUp ? 0 : sortedSkills.size() - 1;
+			stackUp ? i < sortedSkills.size() : i >= 0;
+			i += stackUp ? 1 : -1)
 		{
+			var skill = sortedSkills.get(i);
 			final var skillColor = getSkillColor(skill);
 			final var history = skillXpHistories.get(skill);
 			final var last = history.get(history.size() - 1);
@@ -236,30 +266,62 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				var x = baseX;
 
 				final var boxHeight = fontHeight + 2;
+				int progressWidth = 0;
 
 				// do not allow any rates to render under the chart
-				if (y + boxHeight / 2 + STACKED_RATE_GAP > lastY)
+				if (stackUp)
 				{
-					y = lastY - boxHeight / 2 - STACKED_RATE_GAP;
-				}
+					if (y + boxHeight / 2 + STACKED_RATE_GAP > lastY)
+					{
+						y = lastY - boxHeight / 2 - STACKED_RATE_GAP;
+					}
 
-				if (stackCurrentRates && !showSkillIcons)
+					if (stackCurrentRates && !showSkillIcons)
+					{
+						lastY = y - fontHeight / 2;
+					}
+				}
+				else
 				{
-					lastY = y - fontHeight / 2;
+					if (y - boxHeight / 2 - STACKED_RATE_GAP < lastY)
+					{
+						y = lastY + boxHeight / 2 + STACKED_RATE_GAP;
+					}
+
+					if (stackCurrentRates && !showSkillIcons)
+					{
+						lastY = y + fontHeight / 2;
+					}
 				}
 
 				if (showSkillIcons)
 				{
+					progressWidth += SKILL_ICON_WIDTH + theme.rateMargin;
 					final var icon = skillIconManager.getSkillImage(skill, true);
 
-					if (y + icon.getHeight() / 2 > lastY)
+					if (stackUp)
 					{
-						y = lastY - icon.getHeight() / 2;
-					}
+						if (y + icon.getHeight() / 2 > lastY)
+						{
+							y = lastY - icon.getHeight() / 2;
+						}
 
-					if (stackCurrentRates)
+						if (stackCurrentRates)
+						{
+							lastY = y - icon.getHeight() / 2;
+						}
+					}
+					else
 					{
-						lastY = y - icon.getHeight() / 2;
+						if (y - icon.getHeight() / 2 < lastY)
+						{
+							y = lastY + icon.getHeight() / 2;
+						}
+
+						if (stackCurrentRates)
+						{
+							lastY = y + icon.getHeight() / 2;
+						}
 					}
 
 					x += icon.getWidth() + theme.rateMargin;
@@ -268,6 +330,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				if (showCurrentRates)
 				{
+					progressWidth += width(rate) + theme.ratePadding * 2;
 					final var padding = theme.ratePadding;
 					x += padding;
 
@@ -314,6 +377,15 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 					drawText(rate, x, y + fontHeight / 2, true);
 				}
+			if (showLevelProgressBars)
+			{
+				drawLevelProgress(
+					skill,
+					baseX,
+					y + boxHeight / 2 + 1,
+					progressWidth
+				);
+			}
 			}
 		}
 	}
@@ -348,6 +420,11 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				drawLine(prev.x, prev.y, size.width, prev.y, theme.plotShadow);
 			}
 		}
+	}
+
+	public void setScreenY(int screenY)
+	{
+		this.screenY = screenY;
 	}
 
 	public void drawPauses()
@@ -410,6 +487,29 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		drawText(text, 0, y, true);
 	}
 
+	private void drawLevelProgress(Skill skill, int x, int y, int width)
+	{
+		final var level = client.getRealSkillLevel(skill);
+
+		if (level >= 99)
+		{
+			return;
+		}
+
+		final var currentXp = client.getSkillExperience(skill);
+		final var levelXp = Experience.getXpForLevel(level);
+		final var nextLevelXp = Experience.getXpForLevel(level + 1);
+
+		final var progress = (double) (currentXp - levelXp) / (nextLevelXp - levelXp);
+		final var progressWidth = (int) (width * progress);
+
+		setColor(Color.BLACK);
+		fillRect(x, y, width, PROGRESS_BAR_HEIGHT);
+
+		setColor(getSkillColor(skill));
+		fillRect(x, y, progressWidth, PROGRESS_BAR_HEIGHT);
+	}
+
 	public void drawMouseOver()
 	{
 		if (mouse == null || !showHoverTooltips)
@@ -427,7 +527,6 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			return;
 		}
 
-		// offset by half updateInterval to pseudo "round up"
 		final var hoveredTick = unmapX(mx);
 		final var x = mx + XP_TOOLTIP_LPAD;
 
@@ -438,8 +537,14 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		var closestXp = 0;
 		Skill closestSkill = null;
 
-		for (var skill : skillXpHistories.keySet())
+		final var stackUp = shouldStackUp();
+		var lastTooltipY = stackUp ? size.height : 0;
+
+		for (var i = stackUp ? 0 : sortedSkills.size() - 1;
+			stackUp ? i < sortedSkills.size() : i >= 0;
+			i += stackUp ? 1 : -1)
 		{
+			var skill = sortedSkills.get(i);
 			final var history = skillXpHistories.get(skill);
 
 			var closestDist = Integer.MAX_VALUE;
@@ -456,7 +561,8 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 			if (closest != null && closest.y != 0)
 			{
-				final var y = mapY(closest.y, true);
+				var y = mapY(closest.y, true);
+
 				if (Math.abs(y - mouse.y) < Math.abs(closestY - mouse.y))
 				{
 					closestY = y;
@@ -470,6 +576,25 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 				}
 
 				final var label = skill.getName() + ": " + format(closest.y) + "/hr";
+
+				if (stackUp)
+				{
+					if (y + fontHeight / 2 + STACKED_RATE_GAP > lastTooltipY)
+					{
+						y = lastTooltipY - fontHeight / 2 - STACKED_RATE_GAP;
+					}
+
+					lastTooltipY = y - fontHeight / 2;
+				}
+				else
+				{
+					if (y - fontHeight / 2 - STACKED_RATE_GAP < lastTooltipY)
+					{
+						y = lastTooltipY + fontHeight / 2 + STACKED_RATE_GAP;
+					}
+
+					lastTooltipY = y + fontHeight / 2;
+				}
 
 				drawThemedTooltip(theme, x, y, label, getSkillColor(skill));
 			}
@@ -548,7 +673,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			for (var rates : skillXpHistories.values())
 			{
 				final var last = rates.get(rates.size() - 1);
-				if (last == null)
+				if (last == null || last.getY() == 0)
 				{
 					continue;
 				}
@@ -578,7 +703,22 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			? width(ticksToTime(currentTick)) / 2
 			: 0;
 
-		return Math.max(currentRateWidth, currentTimeWidth);
+		int currentMargin = Math.max(currentRateWidth, currentTimeWidth);
+		int marginDifferential = currentMargin - lastRightMarginWidth;
+
+		// If right margin width change is significant, update.
+		if (marginDifferential > significantRightMarginChangePositive ||
+			marginDifferential < significantRightMarginChangeNegative
+		)
+		{
+			lastRightMarginWidth = currentMargin;
+			return currentMargin;
+		}
+		// else keep original right margin width
+		else
+		{
+			return lastRightMarginWidth;
+		}
 	}
 
 	@Override
