@@ -177,6 +177,8 @@ public class XPMeterPlugin extends Plugin
 		chart.setShowHoverTooltips(config.showHoverTooltips());
 		chart.setDimNonHoveredSkills(config.dimNonHoveredSkills());
 		chart.setShowAllHovers(config.showAllHovers());
+		chart.setShowLevelProgressBars(config.showLevelProgressBars());
+		chart.setShowTimeToLevel(config.showTimeToLevel());
 
 		overlay.setBackgroundColor(
 			config.theme().overlayBackground != null
