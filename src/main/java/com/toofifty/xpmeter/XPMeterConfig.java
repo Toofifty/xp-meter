@@ -384,7 +384,7 @@ public interface XPMeterConfig extends Config
 		section = display
 	)
 	@Range(min = 10,
-		   max = 200)
+		   max = 500)
 	default int chartHeight()
 	{
 		return 60;
@@ -487,11 +487,59 @@ public interface XPMeterConfig extends Config
 	}
 
 	@ConfigItem(
+		name = "Hide without XP data",
+		keyName = "hideNoXP",
+		description = "Hide widget when no XP data is present",
+		section = display,
+		position = 11
+	)
+	default boolean hideNoXP()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Show level progress bars",
+		keyName = "showLevelProgressBars",
+		description = "Show level progress when current rates or skill icons are present",
+		section = display,
+		position = 12
+	)
+	default boolean showLevelProgressBars()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Show time to level",
+		keyName = "showTimeToLevel",
+		description = "Show time to level on hover when tooltip is present",
+		section = display,
+		position = 13
+	)
+	default boolean showTimeToLevel()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Show current level",
+		keyName = "showCurrentLevel",
+		description = "Show current level on hover when tooltip is present",
+		section = display,
+		position = 14
+	)
+	default boolean showCurrentLevel()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		name = "Theme",
 		keyName = "theme",
 		description = "Change the appearance of the overlay",
 		section = display,
-		position = 11
+		position = 15
 	)
 	default Theme theme()
 	{
@@ -542,7 +590,7 @@ public interface XPMeterConfig extends Config
 	}
 
 	@ConfigItem(
-		name = "Scroll to zoom",
+		name = "Shift + Scroll to zoom",
 		keyName = "scrollZoom",
 		description = "Hold Shift + scroll over the overlay to adjust the display span",
 		section = interactivity,
