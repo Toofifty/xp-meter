@@ -524,10 +524,34 @@ public interface XPMeterConfig extends Config
 
 	@ConfigItem(
 		name = "Show time to level",
+		keyName = "showTimeToLevelRates",
+		description = "Show time to level when current rates are present",
+		section = display,
+		position = 14
+	)
+	default boolean showTimeToLevelRates()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Show current level",
+		keyName = "showCurrentLevelRates",
+		description = "Show current level when current rates are present",
+		section = display,
+		position = 15
+	)
+	default boolean showCurrentLevelRates()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		name = "Show tooltip time to level",
 		keyName = "showTimeToLevel",
 		description = "Show time to level on hover when tooltip is present",
 		section = display,
-		position = 14
+		position = 16
 	)
 	default boolean showTimeToLevel()
 	{
@@ -535,11 +559,11 @@ public interface XPMeterConfig extends Config
 	}
 
 	@ConfigItem(
-		name = "Show current level",
+		name = "Show tooltip current level",
 		keyName = "showCurrentLevel",
 		description = "Show current level on hover when tooltip is present",
 		section = display,
-		position = 15
+		position = 17
 	)
 	default boolean showCurrentLevel()
 	{
@@ -551,7 +575,7 @@ public interface XPMeterConfig extends Config
 		keyName = "theme",
 		description = "Change the appearance of the overlay",
 		section = display,
-		position = 16
+		position = 18
 	)
 	default Theme theme()
 	{

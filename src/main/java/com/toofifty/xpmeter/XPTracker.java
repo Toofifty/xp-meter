@@ -152,6 +152,23 @@ public class XPTracker
 		return history;
 	}
 
+	public int getHistoricalXpAt(Skill skill, int tick)
+	{
+		final var currentXp = lastXp.get(skill);
+
+		if (currentXp == null)
+		{
+			return 0;
+		}
+
+		final var xpGainedAfterTick = xpGained.getOrDefault(skill, List.of()).stream()
+			.filter(xpGain -> xpGain.tick > tick)
+			.mapToInt(xpGain -> xpGain.xp)
+			.sum();
+
+		return currentXp - xpGainedAfterTick;
+	}
+
 	public Map<Skill, List<Point>> getAggregate(int maxPixels)
 	{
 		cacheHits = 0;

@@ -180,6 +180,8 @@ public class XPMeterPlugin extends Plugin
 		chart.setShowLevelProgressBars(config.showLevelProgressBars());
 		chart.setShowTimeToLevel(config.showTimeToLevel());
 		chart.setShowCurrentLevel(config.showCurrentLevel());
+		chart.setShowTimeToLevelRates(config.showTimeToLevelRates());
+		chart.setShowCurrentLevelRates(config.showCurrentLevelRates());
 
 		overlay.setBackgroundColor(
 			config.theme().overlayBackground != null
