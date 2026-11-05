@@ -101,6 +101,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private int screenY;
 	private Skill hoveredSkill = null;
 	private int lastRightMarginWidth = 0;
+	private static final String BOX_PADDING = " ";
 
 	
 	@Inject private XPTracker xpTracker;
@@ -260,16 +261,27 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		final var remainingXp = nextLevelXp - currentXp;
 		final var seconds = (long) Math.ceil((double) remainingXp / xpPerHour * 3600);
 
-		final var hours = seconds / 3600;
+		final var days = seconds / 86400;
+		final var hours = (seconds % 86400) / 3600;
 		final var minutes = (seconds % 3600) / 60;
 		final var remainingSeconds = seconds % 60;
 
-		if (hours > 0)
+		if (days > 0)
 		{
-			return String.format("%02d:%02d:%02d", hours, minutes, remainingSeconds);
+			return String.format("%dd:%dh", days, hours);
 		}
 
-		return String.format("%02d:%02d", minutes, remainingSeconds);
+		if (hours > 0)
+		{
+			return String.format("%dh:%dm", hours, minutes);
+		}
+
+		if (minutes > 0)
+		{
+			return String.format("%dm:%ds", minutes, remainingSeconds);
+		}
+
+		return String.format("%ds", remainingSeconds);
 	}
 
 	// Based on chart location in client, determine stack direction.
@@ -305,14 +317,14 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		var label = format(rate) + "/hr";
 		if (showCurrentLevelRates)
 		{
-			label = Experience.getLevelForXp(currentXp) + " - " + label;
+			label = Experience.getLevelForXp(currentXp) + " ∥ " + label;
 		}
 		if (showTimeToLevelRates)
 		{
 			final var ttl = getTimeToLevel(currentXp, rate);
-			if (!ttl.isEmpty()) label += " - TTL: " + ttl;
+			if (!ttl.isEmpty()) label += " ∥ " + ttl;
 		}
-		return label;
+		return BOX_PADDING + label + BOX_PADDING;
 	}
 
 	private void drawCurrentRates()
@@ -675,11 +687,11 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				final var historicalXp = xpTracker.getHistoricalXpAt(skill, closest.x);
 
-				var label = skill.getName() + ": ";
+				var label = BOX_PADDING + skill.getName() + ": ";
 
 				if (showCurrentLevel)
 				{
-					label += Experience.getLevelForXp(historicalXp) + " - ";
+					label += Experience.getLevelForXp(historicalXp) + " ∥ ";
 				}
 
 				label += format(closest.y) + "/hr";
@@ -690,9 +702,11 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 					if (!timeToLevel.isEmpty())
 					{
-						label += " - TTL: " + timeToLevel;
+						label += " ∥ " + timeToLevel;
 					}
 				}
+
+				label += BOX_PADDING;
 
 				if (stackUp)
 				{
@@ -729,11 +743,11 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		{
 			final var historicalXp = xpTracker.getHistoricalXpAt(closestSkill, closestTick);
 
-			var label = closestSkill.getName() + ": ";
+			var label = BOX_PADDING + closestSkill.getName() + ": ";
 
 			if (showCurrentLevel)
 			{
-				label += Experience.getLevelForXp(historicalXp) + " - ";
+				label += Experience.getLevelForXp(historicalXp) + " ∥ ";
 			}
 
 			label += format(closestXp) + "/hr";
@@ -744,9 +758,11 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				if (!timeToLevel.isEmpty())
 				{
-					label += " - TTL: " + timeToLevel;
+					label += " ∥ " + timeToLevel;
 				}
 			}
+
+			label += BOX_PADDING;
 
 			drawThemedTooltip(
 				theme,
