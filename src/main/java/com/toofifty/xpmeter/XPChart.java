@@ -268,20 +268,20 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 		if (days > 0)
 		{
-			return String.format("%dd:%dh", days, hours);
+			return String.format("%dd %02dh", days, hours);
 		}
 
 		if (hours > 0)
 		{
-			return String.format("%dh:%dm", hours, minutes);
+			return String.format("%dh %02dm", hours, minutes);
 		}
 
 		if (minutes > 0)
 		{
-			return String.format("%dm:%ds", minutes, remainingSeconds);
+			return String.format("%dm %02ds", minutes, remainingSeconds);
 		}
 
-		return String.format("%ds", remainingSeconds);
+		return String.format("%02ds", remainingSeconds);
 	}
 
 	// Based on chart location in client, determine stack direction.
@@ -317,12 +317,12 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		var label = format(rate) + "/hr";
 		if (showCurrentLevelRates)
 		{
-			label = Experience.getLevelForXp(currentXp) + " ∥ " + label;
+			label = Experience.getLevelForXp(currentXp) + " | " + label;
 		}
 		if (showTimeToLevelRates)
 		{
 			final var ttl = getTimeToLevel(currentXp, rate);
-			if (!ttl.isEmpty()) label += " ∥ " + ttl;
+			if (!ttl.isEmpty()) label += " | " + ttl;
 		}
 		return BOX_PADDING + label + BOX_PADDING;
 	}
@@ -691,7 +691,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				if (showCurrentLevel)
 				{
-					label += Experience.getLevelForXp(historicalXp) + " ∥ ";
+					label += Experience.getLevelForXp(historicalXp) + " | ";
 				}
 
 				label += format(closest.y) + "/hr";
@@ -702,7 +702,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 					if (!timeToLevel.isEmpty())
 					{
-						label += " ∥ " + timeToLevel;
+						label += " | " + timeToLevel;
 					}
 				}
 
@@ -747,7 +747,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 			if (showCurrentLevel)
 			{
-				label += Experience.getLevelForXp(historicalXp) + " ∥ ";
+				label += Experience.getLevelForXp(historicalXp) + " | ";
 			}
 
 			label += format(closestXp) + "/hr";
@@ -758,7 +758,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				if (!timeToLevel.isEmpty())
 				{
-					label += " ∥ " + timeToLevel;
+					label += " | " + timeToLevel;
 				}
 			}
 
