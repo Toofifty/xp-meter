@@ -1,6 +1,7 @@
 package com.toofifty.xpmeter;
 
 import com.google.common.collect.Lists;
+import com.google.inject.Inject;
 import static com.toofifty.xpmeter.Util.secondsToTicks;
 import static com.toofifty.xpmeter.Util.shortFormat;
 import static com.toofifty.xpmeter.Util.ticksToTime;
@@ -14,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Setter;
+import net.runelite.api.Client;
+import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.overlay.components.LayoutableRenderableEntity;
@@ -28,13 +31,24 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	private static final int TIME_LABEL_TPAD = 2;
 	private static final int TIME_LABEL_SPACING = 4;
 	private static final int XP_LABEL_RPAD = 2;
-	private static final int STACKED_RATE_GAP = 3;
+	private static final int STACKED_RATE_GAP = 5;
+	private static final int PROGRESS_BAR_HEIGHT = 2;
 
 	private static final int XP_TOOLTIP_LPAD = 8;
 
 	private static final Color PAUSE_MARKER_COLOR = new Color(0, 166, 255, 128);
 	private static final Color LOGOUT_MARKER_COLOR = new Color(255, 68, 0, 128);
 	private static final Color CURSOR_MARKER_COLOR = new Color(255, 255, 255, 128);
+
+	private float levelUpMarkerHue = 0.0f;
+
+	private Color LEVEL_UP_MARKER_COLOR()
+	{
+		levelUpMarkerHue = (levelUpMarkerHue + 0.005f) % 1.0f;
+
+		Color color = Color.getHSBColor(levelUpMarkerHue, 1.0f, 1.0f);
+		return new Color(color.getRed(), color.getGreen(), color.getBlue(), 128);
+	}
 
 	@Setter private SkillIconManager skillIconManager;
 
@@ -50,6 +64,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	@Setter private int currentTick = 0;
 	@Setter private Set<Integer> pauses = null;
 	@Setter private Set<Integer> logouts = null;
+	@Setter private Set<Integer> levelUps = null;
 
 	@Setter private XPTracker.Performance performance;
 
@@ -71,11 +86,30 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	@Setter private boolean showHoverTooltips = true;
 	@Setter private boolean dimNonHoveredSkills = true;
 	@Setter private boolean showAllHovers = false;
+	@Setter private boolean showLevelProgressBars = true;
+	@Setter private boolean showTimeToLevel = true;
+	@Setter private boolean showCurrentLevel = true;
+	@Setter private boolean showTimeToLevelRates = true;
+	@Setter private boolean showCurrentLevelRates = true;
 	@Setter private Theme theme = Theme.RUNELITE;
 
 	// local data
-
+	private final Client client;
+	private final int significantRightMarginChangePositive = 4;
+	private final int significantRightMarginChangeNegative = -16;
+	private int screenX;
+	private int screenY;
 	private Skill hoveredSkill = null;
+	private int lastRightMarginWidth = 0;
+	private static final String BOX_PADDING = " ";
+
+	
+	@Inject private XPTracker xpTracker;
+	@Inject
+	public XPChart(Client client)
+	{
+		this.client = client;
+	}
 
 	public boolean hasData()
 	{
@@ -114,6 +148,7 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		drawHistoryPlot();
 		drawCurrentRates();
 		drawPauses();
+		drawLevelUps();
 		drawPerformance();
 		drawMouseOver();
 
@@ -213,53 +248,168 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		}
 	}
 
+	private String getTimeToLevel(int currentXp, int xpPerHour)
+	{
+		final var level = Experience.getLevelForXp(currentXp);
+
+		if (level >= 99 || xpPerHour <= 0)
+		{
+			return "";
+		}
+
+		final var nextLevelXp = Experience.getXpForLevel(level + 1);
+		final var remainingXp = nextLevelXp - currentXp;
+		final var seconds = (long) Math.ceil((double) remainingXp / xpPerHour * 3600);
+
+		final var days = seconds / 86400;
+		final var hours = (seconds % 86400) / 3600;
+		final var minutes = (seconds % 3600) / 60;
+		final var remainingSeconds = seconds % 60;
+
+		if (days > 0)
+		{
+			return String.format("%dd %02dh", days, hours);
+		}
+
+		if (hours > 0)
+		{
+			return String.format("%dh %02dm", hours, minutes);
+		}
+
+		if (minutes > 0)
+		{
+			return String.format("%dm %02ds", minutes, remainingSeconds);
+		}
+
+		return String.format("%02ds", remainingSeconds);
+	}
+
+	// Based on chart location in client, determine stack direction.
+	private boolean shouldStackUp()
+	{
+		final var chartCenterY = screenY + size.height / 2;
+		final var screenCenterY = client.getCanvasHeight() / 2;
+
+		return chartCenterY > screenCenterY;
+	}
+
+	private boolean isMouseOnRightSide(int mouseX)
+	{
+		final var mouseCenterX = screenX + mouseX;
+		final var screenCenterX = client.getCanvasWidth() / 2;
+
+		return mouseCenterX > screenCenterX;
+	}
+
+	private int getTooltipX(int mouseX, String label)
+	{
+		if (isMouseOnRightSide(mouseX))
+		{
+			return mouseX - width(label) - XP_TOOLTIP_LPAD;
+		}
+
+		return mouseX + XP_TOOLTIP_LPAD;
+	}
+
+	private String getCurrentRateLabel(Skill skill, int rate)
+	{
+		final var currentXp = client.getSkillExperience(skill);
+		var label = format(rate) + "/hr";
+		if (showCurrentLevelRates)
+		{
+			label = Experience.getLevelForXp(currentXp) + " | " + label;
+		}
+		if (showTimeToLevelRates)
+		{
+			final var ttl = getTimeToLevel(currentXp, rate);
+			if (!ttl.isEmpty()) label += " | " + ttl;
+		}
+		return BOX_PADDING + label + BOX_PADDING;
+	}
+
 	private void drawCurrentRates()
 	{
-		if (!showCurrentRates && !showSkillIcons)
+		if (!showCurrentRates && !showSkillIcons && !showCurrentLevelRates && !showTimeToLevelRates)
 		{
 			return;
 		}
 
 		final var baseX = size.width + theme.rateMargin;
+		final var stackUp = shouldStackUp();
+		final var progressWidth = lastRightMarginWidth - theme.rateMargin;
 
-		var lastY = size.height;
-		for (var skill : sortedSkills)
+		var lastY = stackUp ? size.height : 0;
+
+		for (var i = stackUp ? 0 : sortedSkills.size() - 1;
+			stackUp ? i < sortedSkills.size() : i >= 0;
+			i += stackUp ? 1 : -1)
 		{
+			var skill = sortedSkills.get(i);
 			final var skillColor = getSkillColor(skill);
 			final var history = skillXpHistories.get(skill);
 			final var last = history.get(history.size() - 1);
 
 			if (last != null && last.getY() != 0)
 			{
-				final var rate = format(last.y);
+				final var rate = getCurrentRateLabel(skill, last.y);
 				var y = mapY(last.y, true);
 				var x = baseX;
 
 				final var boxHeight = fontHeight + 2;
 
 				// do not allow any rates to render under the chart
-				if (y + boxHeight / 2 + STACKED_RATE_GAP > lastY)
+				if (stackUp)
 				{
-					y = lastY - boxHeight / 2 - STACKED_RATE_GAP;
-				}
+					if (y + boxHeight / 2 + STACKED_RATE_GAP > lastY)
+					{
+						y = lastY - boxHeight / 2 - STACKED_RATE_GAP;
+					}
 
-				if (stackCurrentRates && !showSkillIcons)
+					if (stackCurrentRates && !showSkillIcons)
+					{
+						lastY = y - fontHeight / 2;
+					}
+				}
+				else
 				{
-					lastY = y - fontHeight / 2;
+					if (y - boxHeight / 2 - STACKED_RATE_GAP < lastY)
+					{
+						y = lastY + boxHeight / 2 + STACKED_RATE_GAP;
+					}
+
+					if (stackCurrentRates && !showSkillIcons)
+					{
+						lastY = y + fontHeight / 2;
+					}
 				}
 
 				if (showSkillIcons)
 				{
 					final var icon = skillIconManager.getSkillImage(skill, true);
 
-					if (y + icon.getHeight() / 2 > lastY)
+					if (stackUp)
 					{
-						y = lastY - icon.getHeight() / 2;
-					}
+						if (y + icon.getHeight() / 2 > lastY)
+						{
+							y = lastY - icon.getHeight() / 2;
+						}
 
-					if (stackCurrentRates)
+						if (stackCurrentRates)
+						{
+							lastY = y - icon.getHeight() / 2;
+						}
+					}
+					else
 					{
-						lastY = y - icon.getHeight() / 2;
+						if (y - icon.getHeight() / 2 < lastY)
+						{
+							y = lastY + icon.getHeight() / 2;
+						}
+
+						if (stackCurrentRates)
+						{
+							lastY = y + icon.getHeight() / 2;
+						}
 					}
 
 					x += icon.getWidth() + theme.rateMargin;
@@ -268,51 +418,64 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 				if (showCurrentRates)
 				{
-					final var padding = theme.ratePadding;
-					x += padding;
+					final var rateBoxWidth = width(rate);
 
 					if (theme.rateOuterBorder != null)
 					{
 						setColor(theme.rateBackground);
 						fillRoundRect(
-							x - padding,
+							x,
 							y - boxHeight / 2,
-							width(rate) + padding * 2,
+							rateBoxWidth,
 							boxHeight,
 							4
 						);
+
 						setColor(theme.rateInnerBorder);
 						drawRoundRect(
-							x - padding,
+							x,
 							y - boxHeight / 2,
-							width(rate) + padding * 2,
+							rateBoxWidth,
 							boxHeight,
 							4
 						);
+
 						setColor(theme.rateOuterBorder);
 						drawRoundRect(
-							x - padding - 1,
+							x - 1,
 							y - boxHeight / 2 - 1,
-							width(rate) + padding * 2 + 2,
+							rateBoxWidth + 2,
 							boxHeight + 2,
 							5
 						);
+
 						setColor(theme.rateTextColor);
 					}
 					else
 					{
 						setColor(theme.rateBackground);
 						fillRoundRect(
-							x - padding,
+							x,
 							y - boxHeight / 2,
-							width(rate) + padding * 2,
+							rateBoxWidth,
 							boxHeight,
 							2
 						);
+
 						setColor(skillColor);
 					}
 
 					drawText(rate, x, y + fontHeight / 2, true);
+				}
+
+				if (showLevelProgressBars)
+				{
+					drawLevelProgress(
+						skill,
+						baseX,
+						y + boxHeight / 2 + 1,
+						progressWidth
+					);
 				}
 			}
 		}
@@ -350,6 +513,16 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		}
 	}
 
+	public void setScreenY(int screenY)
+	{
+		this.screenY = screenY;
+	}
+
+	public void setScreenX(int screenX)
+	{
+		this.screenX = screenX;
+	}
+
 	public void drawPauses()
 	{
 		setColor(PAUSE_MARKER_COLOR);
@@ -364,6 +537,19 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 		setColor(LOGOUT_MARKER_COLOR);
 		for (var tick : logouts)
+		{
+			final var x = mapX(tick);
+			if (x >= 0)
+			{
+				drawVMarker(x);
+			}
+		}
+	}
+
+	public void drawLevelUps()
+	{
+		setColor(LEVEL_UP_MARKER_COLOR());
+		for (var tick : levelUps)
 		{
 			final var x = mapX(tick);
 			if (x >= 0)
@@ -410,6 +596,29 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 		drawText(text, 0, y, true);
 	}
 
+	private void drawLevelProgress(Skill skill, int x, int y, int width)
+	{
+		final var level = client.getRealSkillLevel(skill);
+
+		if (level >= 99)
+		{
+			return;
+		}
+
+		final var currentXp = client.getSkillExperience(skill);
+		final var levelXp = Experience.getXpForLevel(level);
+		final var nextLevelXp = Experience.getXpForLevel(level + 1);
+
+		final var progress = (double) (currentXp - levelXp) / (nextLevelXp - levelXp);
+		final var progressWidth = (int) (width * progress);
+
+		setColor(Color.BLACK);
+		fillRect(x, y, width, PROGRESS_BAR_HEIGHT);
+
+		setColor(getSkillColor(skill));
+		fillRect(x, y, progressWidth, PROGRESS_BAR_HEIGHT);
+	}
+
 	public void drawMouseOver()
 	{
 		if (mouse == null || !showHoverTooltips)
@@ -427,19 +636,24 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			return;
 		}
 
-		// offset by half updateInterval to pseudo "round up"
 		final var hoveredTick = unmapX(mx);
-		final var x = mx + XP_TOOLTIP_LPAD;
 
 		setColor(CURSOR_MARKER_COLOR);
 		drawVMarker(mx);
 
 		var closestY = Integer.MIN_VALUE;
 		var closestXp = 0;
+		var closestTick = 0;
 		Skill closestSkill = null;
 
-		for (var skill : skillXpHistories.keySet())
+		final var stackUp = shouldStackUp();
+		var lastTooltipY = stackUp ? size.height : 0;
+
+		for (var i = stackUp ? 0 : sortedSkills.size() - 1;
+			stackUp ? i < sortedSkills.size() : i >= 0;
+			i += stackUp ? 1 : -1)
 		{
+			var skill = sortedSkills.get(i);
 			final var history = skillXpHistories.get(skill);
 
 			var closestDist = Integer.MAX_VALUE;
@@ -456,11 +670,13 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 			if (closest != null && closest.y != 0)
 			{
-				final var y = mapY(closest.y, true);
+				var y = mapY(closest.y, true);
+
 				if (Math.abs(y - mouse.y) < Math.abs(closestY - mouse.y))
 				{
 					closestY = y;
 					closestXp = closest.y;
+					closestTick = closest.x;
 					closestSkill = skill;
 				}
 
@@ -469,9 +685,55 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 					continue;
 				}
 
-				final var label = skill.getName() + ": " + format(closest.y) + "/hr";
+				final var historicalXp = xpTracker.getHistoricalXpAt(skill, closest.x);
 
-				drawThemedTooltip(theme, x, y, label, getSkillColor(skill));
+				var label = BOX_PADDING + skill.getName() + ": ";
+
+				if (showCurrentLevel)
+				{
+					label += Experience.getLevelForXp(historicalXp) + " | ";
+				}
+
+				label += format(closest.y) + "/hr";
+
+				if (showTimeToLevel)
+				{
+					final var timeToLevel = getTimeToLevel(historicalXp, closest.y);
+
+					if (!timeToLevel.isEmpty())
+					{
+						label += " | " + timeToLevel;
+					}
+				}
+
+				label += BOX_PADDING;
+
+				if (stackUp)
+				{
+					if (y + fontHeight / 2 + STACKED_RATE_GAP > lastTooltipY)
+					{
+						y = lastTooltipY - fontHeight / 2 - STACKED_RATE_GAP;
+					}
+
+					lastTooltipY = y - fontHeight / 2;
+				}
+				else
+				{
+					if (y - fontHeight / 2 - STACKED_RATE_GAP < lastTooltipY)
+					{
+						y = lastTooltipY + fontHeight / 2 + STACKED_RATE_GAP;
+					}
+
+					lastTooltipY = y + fontHeight / 2;
+				}
+
+				drawThemedTooltip(
+					theme,
+					getTooltipX(mx, label),
+					y,
+					label,
+					getSkillColor(skill)
+				);
 			}
 		}
 
@@ -479,9 +741,36 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 
 		if (!showAllHovers && closestSkill != null)
 		{
-			final var label = closestSkill.getName() + ": " + format(closestXp) + "/hr";
+			final var historicalXp = xpTracker.getHistoricalXpAt(closestSkill, closestTick);
 
-			drawThemedTooltip(theme, x, closestY, label, getSkillColor(closestSkill));
+			var label = BOX_PADDING + closestSkill.getName() + ": ";
+
+			if (showCurrentLevel)
+			{
+				label += Experience.getLevelForXp(historicalXp) + " | ";
+			}
+
+			label += format(closestXp) + "/hr";
+
+			if (showTimeToLevel)
+			{
+				final var timeToLevel = getTimeToLevel(historicalXp, closestXp);
+
+				if (!timeToLevel.isEmpty())
+				{
+					label += " | " + timeToLevel;
+				}
+			}
+
+			label += BOX_PADDING;
+
+			drawThemedTooltip(
+				theme,
+				getTooltipX(mx, label),
+				closestY,
+				label,
+				getSkillColor(closestSkill)
+			);
 		}
 	}
 
@@ -543,22 +832,25 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 	{
 		// width of the largest current rate
 		var currentRateWidth = 0;
+
 		if (showCurrentRates || showSkillIcons)
 		{
-			for (var rates : skillXpHistories.values())
+			for (var skill : sortedSkills)
 			{
+				final var rates = skillXpHistories.get(skill);
 				final var last = rates.get(rates.size() - 1);
-				if (last == null)
+
+				if (last == null || last.getY() == 0)
 				{
 					continue;
 				}
 
-				final var text = format(last.y);
+				final var text = getCurrentRateLabel(skill, last.y);
 				var width = 0;
 
 				if (showCurrentRates)
 				{
-					width += width(text) + theme.ratePadding * 2 + theme.rateMargin * 2;
+					width += width(text) + theme.rateMargin * 2;
 				}
 
 				if (showSkillIcons)
@@ -578,7 +870,22 @@ public class XPChart extends XPChartBase implements LayoutableRenderableEntity
 			? width(ticksToTime(currentTick)) / 2
 			: 0;
 
-		return Math.max(currentRateWidth, currentTimeWidth);
+		int currentMargin = Math.max(currentRateWidth, currentTimeWidth);
+		int marginDifferential = currentMargin - lastRightMarginWidth;
+
+		// If right margin width change is significant, update.
+		if (marginDifferential > significantRightMarginChangePositive ||
+			marginDifferential < significantRightMarginChangeNegative
+		)
+		{
+			lastRightMarginWidth = currentMargin;
+			return currentMargin;
+		}
+		// else keep original right margin width
+		else
+		{
+			return lastRightMarginWidth;
+		}
 	}
 
 	@Override

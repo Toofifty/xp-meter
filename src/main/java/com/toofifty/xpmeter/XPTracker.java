@@ -43,6 +43,7 @@ public class XPTracker
 	@Expose @Getter private boolean paused;
 	@Expose @Getter private final Set<Integer> pauses = new HashSet<>();
 	@Expose @Getter private final Set<Integer> logouts = new HashSet<>();
+	@Expose @Getter private final Set<Integer> levelUps = new HashSet<>();
 
 	// transient
 	@Setter private Set<Skill> enabledSkills;
@@ -72,6 +73,14 @@ public class XPTracker
 			}
 
 			final var diff = xp - lastXp.get(skill);
+			if (diff > 0 &&
+				net.runelite.api.Experience.getLevelForXp(xp) >
+				net.runelite.api.Experience.getLevelForXp(lastXp.get(skill))
+			)
+			{
+				levelUp();
+			}
+
 			if (diff != 0)
 			{
 				xpGained.get(skill).add(new XPGain(currentTick, diff));
@@ -143,6 +152,23 @@ public class XPTracker
 		return history;
 	}
 
+	public int getHistoricalXpAt(Skill skill, int tick)
+	{
+		final var currentXp = lastXp.get(skill);
+
+		if (currentXp == null)
+		{
+			return 0;
+		}
+
+		final var xpGainedAfterTick = xpGained.getOrDefault(skill, List.of()).stream()
+			.filter(xpGain -> xpGain.tick > tick)
+			.mapToInt(xpGain -> xpGain.xp)
+			.sum();
+
+		return currentXp - xpGainedAfterTick;
+	}
+
 	public Map<Skill, List<Point>> getAggregate(int maxPixels)
 	{
 		cacheHits = 0;
@@ -196,6 +222,7 @@ public class XPTracker
 		cache.clear();
 		pauses.clear();
 		logouts.clear();
+		levelUps.clear();
 		currentTick = 0;
 	}
 
@@ -208,6 +235,11 @@ public class XPTracker
 	{
 		paused = true;
 		pauses.add(currentTick);
+	}
+
+	public void levelUp()
+	{
+		levelUps.add(currentTick);
 	}
 
 	public void unpause()
@@ -267,6 +299,14 @@ public class XPTracker
 		for (var logout : data.get("logouts").getAsJsonArray())
 		{
 			logouts.add(logout.getAsInt());
+		}
+
+		if (data.has("levelUps"))
+		{
+			for (var levelUp : data.get("levelUps").getAsJsonArray())
+			{
+				levelUps.add(levelUp.getAsInt());
+			}
 		}
 	}
 
